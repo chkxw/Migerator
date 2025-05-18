@@ -30,7 +30,7 @@ proxy_generate_env_content() {
     local https_proxy="http://${host}:${port}/"
     local ftp_proxy="ftp://${host}:${port}/"
     
-    local content="# Proxy settings for WISC CS Building
+    local content="# System Proxy
 export http_proxy=\"${http_proxy}\"
 export https_proxy=\"${https_proxy}\"
 export ftp_proxy=\"${ftp_proxy}\"
@@ -55,7 +55,7 @@ proxy_generate_apt_content() {
     local https_proxy="http://${host}:${port}"
     local ftp_proxy="ftp://${host}:${port}"
     
-    local content="# Proxy settings for WISC CS Building
+    local content="# System Proxy
 Acquire::http::Proxy \"${http_proxy}\";
 Acquire::https::Proxy \"${https_proxy}\";
 Acquire::ftp::Proxy \"${ftp_proxy}\";"
@@ -183,7 +183,7 @@ proxy_setup_service() {
             fi
             
             # Configure proxy for non-login shells
-            local bashrc_content="# Proxy settings for WISC CS Building
+            local bashrc_content="# System Proxy
 source /etc/profile.d/proxy.sh"
             
             if ! Sudo safe_insert "Non-login shells proxy" "/etc/bash.bashrc" "$bashrc_content"; then
@@ -296,7 +296,7 @@ proxy_remove_service() {
             fi
             
             # Remove proxy from non-login shells
-            local bashrc_content="# Proxy settings for WISC CS Building
+            local bashrc_content="# System Proxy
 source /etc/profile.d/proxy.sh"
             
             if ! Sudo safe_remove "Non-login shells proxy" "/etc/bash.bashrc" "$bashrc_content"; then

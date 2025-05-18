@@ -237,6 +237,97 @@ PKG_FORMAL_NAME[wifi-hotspot]="linux-wifi-hotspot"
 PKG_GPG_KEY_URL[wifi-hotspot]="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x0E49A504B40CA53C5D8C72B487B8838C5E2893D3"
 PKG_ARCH[wifi-hotspot]="amd64"
 PKG_VERSION_CODENAME[wifi-hotspot]="$OS_CODENAME"
+
+# Package Groups Definition
+# These are groups of packages for batch installation
+
+# BadgerRL dependencies array
+# Packages needed specifically for BadgerRL development
+declare -a BA_PKG_BADGER_RL_DEPS=(
+    "ccache"
+    "clang"
+    "cmake"
+    "git"
+    "graphviz"
+    "libasound2-dev"
+    "libbox2d-dev"
+    "libgl-dev"
+    "libqt6opengl6-dev"
+    "libqt6svg6-dev"
+    "libstdc++-12-dev"
+    "llvm"
+    "mold"
+    "net-tools"
+    "ninja-build"
+    "pigz"
+    "qt6-base-dev"
+    "rsync"
+    "xxd"
+)
+export BA_PKG_BADGER_RL_DEPS
+export BA_PKG_BADGER_RL_DEPS_DESCRIPTION="BadgerRL Development Dependencies"
+
+# Common dependencies array
+# Basic packages needed for most system operations and other installations
+declare -a BA_PKG_COMMON_DEPS=(
+    "software-properties-common"
+    "apt-transport-https"
+    "wget"
+    "curl"
+    "corkscrew"
+    "ca-certificates"
+    "samba"
+)
+export BA_PKG_COMMON_DEPS
+export BA_PKG_COMMON_DEPS_DESCRIPTION="Common System Dependencies"
+
+# Utilities array
+# Useful system tools and utilities
+declare -a BA_PKG_UTILITIES=(
+    "openssh-server"
+    "git"
+    "bashtop"
+    "gnome-tweaks"
+    "expect"
+    "dconf-editor"
+    "net-tools"
+)
+export BA_PKG_UTILITIES
+export BA_PKG_UTILITIES_DESCRIPTION="System Utilities"
+
+# Development tools array
+# Tools for software development
+declare -a BA_PKG_DEV_TOOLS=(
+    "build-essential"
+    "git"
+    "vim"
+    "neovim"
+    "tmux"
+    "htop"
+    "jq"
+    "shellcheck"
+    "curl"
+    "wget"
+    "unzip"
+    "p7zip-full"
+)
+export BA_PKG_DEV_TOOLS
+export BA_PKG_DEV_TOOLS_DESCRIPTION="Development Tools"
+
+# ML/AI tools array
+# Tools for machine learning and AI development
+declare -a BA_PKG_ML_TOOLS=(
+    "python3"
+    "python3-pip"
+    "python3-dev"
+    "python3-venv"
+    "libopenblas-dev"
+    "liblapack-dev"
+    "gfortran"
+)
+export BA_PKG_ML_TOOLS
+export BA_PKG_ML_TOOLS_DESCRIPTION="Machine Learning Tools"
+
 PKG_BRANCH[wifi-hotspot]="main"
 PKG_DEB_SRC[wifi-hotspot]="true"
 PKG_REPO_BASE_URL[wifi-hotspot]="https://ppa.launchpadcontent.net/lakinduakash/lwh/ubuntu"

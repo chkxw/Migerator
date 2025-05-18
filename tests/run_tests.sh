@@ -23,6 +23,8 @@ TEST_SCRIPTS=(
     "test_user_management.sh"
     "test_power.sh"
     "test_proxy.sh"
+    "test_cli_parser.sh"
+    "test_batch_packages.sh"
 )
 
 # Run each test script

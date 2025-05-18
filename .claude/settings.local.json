@@ -5,7 +5,16 @@
       "Bash(chmod:*)",
       "Bash(grep:*)",
       "Bash(bash:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(/home/oem/Documents/SetupScriptTest/tests/test_user_management.sh)",
+      "Bash(rm:*)",
+      "Bash(./setup.sh:*)",
+      "Bash(./tests/test_cli_parser.sh:*)",
+      "Bash(./tests/test_packages.sh:*)",
+      "Bash(ls:*)",
+      "Bash(./tests/test_batch_packages.sh:*)",
+      "Bash(./tests/run_tests.sh:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }

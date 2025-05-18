@@ -51,15 +51,32 @@ sleep-inactive-ac-type='nothing'"
 power_set_performance() {
     log_debug "Setting power mode to performance" "$MODULE_NAME"
     
+    # Check if OS information is available
+    if [ -z "$OS_VERSION" ]; then
+        detect_os_info
+    fi
+    
     # Check if powerprofilesctl is available
     if ! command -v powerprofilesctl &>/dev/null; then
-        log_warning "powerprofilesctl not found, installing power-profiles-daemon" "$MODULE_NAME"
-        Sudo apt update >/dev/null
-        Sudo apt install -y power-profiles-daemon
-        if [ $? -ne 0 ]; then
-            log_error "Failed to install power-profiles-daemon" "$MODULE_NAME"
-            return 1
+        # Check Ubuntu version - power-profiles-daemon is only available on Ubuntu 22.04 and later
+        if [[ "$OS_NAME" == "ubuntu" ]] && [[ "${OS_VERSION%%.*}" -ge 22 ]]; then
+            log_warning "powerprofilesctl not found, installing power-profiles-daemon" "$MODULE_NAME"
+            Sudo apt update >/dev/null
+            Sudo apt install -y power-profiles-daemon
+            if [ $? -ne 0 ]; then
+                log_error "Failed to install power-profiles-daemon" "$MODULE_NAME"
+                return 1
+            fi
+        else
+            log_info "Skipping power mode setting - powerprofilesctl not available on $OS_NAME $OS_VERSION" "$MODULE_NAME"
+            return 0
         fi
+    fi
+    
+    # If we reach here, powerprofilesctl should be available
+    if ! command -v powerprofilesctl &>/dev/null; then
+        log_warning "powerprofilesctl still not available after installation attempt" "$MODULE_NAME"
+        return 0
     fi
     
     # Check current power mode

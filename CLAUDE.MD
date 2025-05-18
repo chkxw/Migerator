@@ -289,15 +289,54 @@ All functionality should be able to be redo!!!
 
 ## Next Steps
 
-0. Migerate more package options from the old setup script (Now only a few of them exist in globals.sh's # Package repository information)
-1. Check+Test the implementation of adding new lab users / remove lab users
-   Ok, I find a serious problem here, people's account name involves the year they join this lab, but, now we just use the year we create the account. It's ok for new users, but it's not ok for old user when creating their account on a new computer.  Now, we just have a list of user, but actually, there should be some other fields about the user, like their year that they join this Lab, Let's first assume everyone join 2024. And maybe we need to have more fields in the future, so I think the data strcture should be more like the one we have for # Package repository information, that we refer by one's full name. 
-2. Complete+Test remaining Level 2 modules (extend existing modules for proxy, conda, power)
-3. Develop the CLI interface for command dispatching and parameter handling
-5. Integrate all components into a cohesive single-file deliverable
+1. Finalize integration testing:
+   - Test all modules together in a complete workflow
+   - Verify that each module correctly implements the undo/remove functionality
+   - Test edge cases with various command line options
+
+2. Create the single-file deliverable:
+   - Write a script to combine all modules into a single file
+   - Ensure proper load order of functions and dependencies
+   - Verify the bundled script works correctly with all modules
+
+3. Add comprehensive documentation:
+   - Create a user manual with usage examples
+   - Document all available commands and options
+   - Add maintenance guidelines for future development
+
+4. Further enhancements (if time permits):
+   - Add more package repository options
+   - Expand lab user management capabilities
+   - Add version checking and update mechanism
 
 ## Current progress
-I'm on step 2 but I notice a series problem, to enable undo all safe_insert, I need to geneerate exact content to pass into safe_remove, so actually the old way of hard coding the content before insert function doesn't work. We need a uniform way to provide just enough information to generate content to pass into safe_insert and safe_remove. 
+All core functionality has been implemented and tested successfully! This includes:
+
+1. All Level 0 and Level 1 abstractions:
+   - Logging system with configurable verbosity
+   - File operations with safe_insert and safe_remove
+   - Package management system with repository and GPG key handling
+   - User management utilities
+   - Sudo execution with environment preservation
+
+2. Level 2 modules for common tasks:
+   - Proxy configuration for various services
+   - SSH server setup
+   - Power management settings
+   - Lab user management
+   - Conda installation and configuration
+
+3. Command-line interface:
+   - Module discovery and registration
+   - Command dispatching with argument parsing
+   - Help message generation
+   - Support for subcommands
+
+The CLI parser and main setup.sh script are now working correctly, with the ability to handle subcommands from modules (e.g., "lab_users_main check"). Global options are correctly passed to modules, and help messages are generated for both the main script and individual modules.
+
+The main challenge of ensuring all operations are reversible has been solved by implementing content generation functions that produce the exact same content for both insertion and removal operations.
+
+Current remaining work is primarily integration testing and bundling the components into a single file deliverable.
 
 ## Important
 I change the API of safe_insert and safe_remove to accept only content instead of title + content, and will split it into title line and other content lines in the function itself, but haven't change all the place that uses this API. This change is intend to make the API easier so that we can directly return a bunch of lines for the content generating function.
