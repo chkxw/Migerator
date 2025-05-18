@@ -467,6 +467,29 @@ else
 fi
 increment_tests $?
 
+# Test 13: Multiple Command Parsing
+print_header "Multiple Command Parsing"
+
+# Test the ability to execute multiple commands in a single invocation
+# We'll monitor the debug logs to verify that both commands are executed
+
+# Reset the log level to ensure we capture debug messages
+set_log_level "DEBUG"
+
+# Execute two commands in a single command line
+multiple_cmd_output=$(parse_args test_module1_main --param1 value1 test_module2_main --param2 value2 2>&1)
+multiple_cmd_code=$?
+
+# Check if both commands were executed by looking for their outputs in the log
+if [[ "$multiple_cmd_output" == *"Parameter 1 set to: value1"* ]] && 
+   [[ "$multiple_cmd_output" == *"Parameter 2 set to: value2"* ]]; then
+    report_result 0 "Multiple command parsing works correctly"
+else
+    report_result 1 "Multiple command parsing failed"
+    echo "Output: $multiple_cmd_output"
+fi
+increment_tests $?
+
 # Output summary
 print_header "Test Summary"
 echo "Tests passed: $tests_passed / $tests_total"

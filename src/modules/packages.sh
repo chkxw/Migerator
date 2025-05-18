@@ -13,12 +13,8 @@ source "$PROJECT_ROOT/src/core/sudo.sh"
 source "$PROJECT_ROOT/src/core/file_ops.sh"
 source "$PROJECT_ROOT/src/core/package_manager.sh"
 
-# Module info
-MODULE_NAME="packages"
-MODULE_DESCRIPTION="Install and manage system packages with pre/post processing"
-MODULE_VERSION="1.0.0"
-
-log_debug "Loading packages module" "$MODULE_NAME"
+# Log with hard-coded module name for initial loading
+log_debug "Loading packages module" "packages"
 
 # Function to check if package is installed
 # Usage: is_package_installed package_name
@@ -744,6 +740,16 @@ install_package_set() {
 #   --help                        - Show help message
 # Returns: 0 on success, 1 on failure
 packages_main() {
+    # Save previous module context
+    local PREV_MODULE_NAME="$MODULE_NAME"
+    local PREV_MODULE_DESCRIPTION="$MODULE_DESCRIPTION"
+    local PREV_MODULE_VERSION="$MODULE_VERSION"
+    
+    # Set this module's context
+    MODULE_NAME="packages"
+    MODULE_DESCRIPTION="Install and manage system packages with pre/post processing"
+    MODULE_VERSION="1.0.0"
+    
     log_debug "Packages module main function called with args: $@" "$MODULE_NAME"
     
     # Default values
@@ -842,34 +848,67 @@ EOF
         
         # Output the help text
         echo "$help_text"
+        
+        # Restore previous module context
+        MODULE_NAME="$PREV_MODULE_NAME"
+        MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+        MODULE_VERSION="$PREV_MODULE_VERSION"
+        
         return 0
     fi
     
     # Execute the appropriate command
     case "$command" in
         install)
+            local result=0
             if [ ${#packages[@]} -eq 0 ]; then
                 log_error "No packages specified for installation" "$MODULE_NAME"
-                return 1
+                result=1
+            else
+                install_packages "${packages[@]}"
+                result=$?
             fi
-            install_packages "${packages[@]}"
-            return $?
+            
+            # Restore previous module context
+            MODULE_NAME="$PREV_MODULE_NAME"
+            MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+            MODULE_VERSION="$PREV_MODULE_VERSION"
+            
+            return $result
             ;;
         remove)
+            local result=0
             if [ ${#packages[@]} -eq 0 ]; then
                 log_error "No packages specified for removal" "$MODULE_NAME"
-                return 1
+                result=1
+            else
+                uninstall_packages "${packages[@]}"
+                result=$?
             fi
-            uninstall_packages "${packages[@]}"
-            return $?
+            
+            # Restore previous module context
+            MODULE_NAME="$PREV_MODULE_NAME"
+            MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+            MODULE_VERSION="$PREV_MODULE_VERSION"
+            
+            return $result
             ;;
         set)
+            local result=0
             if [ -z "$set_name" ]; then
                 log_error "No package set specified" "$MODULE_NAME"
-                return 1
+                result=1
+            else
+                install_package_set "$set_name"
+                result=$?
             fi
-            install_package_set "$set_name"
-            return $?
+            
+            # Restore previous module context
+            MODULE_NAME="$PREV_MODULE_NAME"
+            MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+            MODULE_VERSION="$PREV_MODULE_VERSION"
+            
+            return $result
             ;;
         list)
             list_text="Available packages:"
@@ -878,10 +917,22 @@ EOF
   $nickname - ${PKG_FORMAL_NAME[$nickname]}"
             done
             echo "$list_text"
+            
+            # Restore previous module context
+            MODULE_NAME="$PREV_MODULE_NAME"
+            MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+            MODULE_VERSION="$PREV_MODULE_VERSION"
+            
             return 0
             ;;
         *)
             log_error "Unknown command: $command" "$MODULE_NAME"
+            
+            # Restore previous module context
+            MODULE_NAME="$PREV_MODULE_NAME"
+            MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+            MODULE_VERSION="$PREV_MODULE_VERSION"
+            
             return 1
             ;;
     esac
@@ -904,4 +955,4 @@ export -f install_packages
 export -f uninstall_packages
 export -f install_package_set
 
-log_debug "Packages module loaded" "$MODULE_NAME"
+log_debug "Packages module loaded" "packages"

@@ -12,12 +12,8 @@ source "$PROJECT_ROOT/src/core/globals.sh"
 source "$PROJECT_ROOT/src/core/sudo.sh"
 source "$PROJECT_ROOT/src/core/file_ops.sh"
 
-# Module info
-MODULE_NAME="users"
-MODULE_DESCRIPTION="Manage system users and shared resources"
-MODULE_VERSION="1.0.0"
-
-log_debug "Loading user management module" "$MODULE_NAME"
+# Log with hard-coded module name for initial loading
+log_debug "Loading user management module" "users"
 
 # Function to get username from user_id
 # Usage: get_username "user_id"
@@ -394,8 +390,6 @@ remove_system_user() {
 
 # Function to create a new user
 create_user() {
-    # Ensure root privileges
-    ensure_root
     
     local username="$1"
     local is_super="$2"
@@ -715,6 +709,16 @@ teardown_users() {
 # Usage: lab_users_main [args...]
 # Returns: 0 on success, 1 on failure
 lab_users_main() {
+    # Save previous module context
+    local PREV_MODULE_NAME="$MODULE_NAME"
+    local PREV_MODULE_DESCRIPTION="$MODULE_DESCRIPTION"
+    local PREV_MODULE_VERSION="$MODULE_VERSION"
+    
+    # Set this module's context
+    MODULE_NAME="users"
+    MODULE_DESCRIPTION="Manage system users and shared resources"
+    MODULE_VERSION="1.0.0"
+    
     log_debug "User management module main function called with args: $@" "$MODULE_NAME"
     
     # Parse arguments
@@ -789,33 +793,47 @@ lab_users_main() {
         echo "Options:"
         echo "  --force                Force operation without confirmation"
         echo "  --help, -h             Show this help message"
+        
+        # Restore previous module context
+        MODULE_NAME="$PREV_MODULE_NAME"
+        MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+        MODULE_VERSION="$PREV_MODULE_VERSION"
+        
         return 0
     fi
     
     # Execute the appropriate command
+    local result=0
     if [ "$setup" = "true" ]; then
         setup_users
-        return $?
+        result=$?
     elif [ "$teardown" = "true" ]; then
         if [ "$force" = "true" ]; then
             teardown_users "force"
         else
             teardown_users
         fi
-        return $?
+        result=$?
     elif [ -n "$add_user" ]; then
         add_system_user "$add_user"
-        return $?
+        result=$?
     elif [ -n "$remove_user" ]; then
         remove_system_user "$remove_user"
-        return $?
+        result=$?
     elif [ "$check" = "true" ]; then
         check_shared_resources
-        return $?
+        result=$?
     else
         log_error "No command specified" "$MODULE_NAME"
-        return 1
+        result=1
     fi
+    
+    # Restore previous module context
+    MODULE_NAME="$PREV_MODULE_NAME"
+    MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+    MODULE_VERSION="$PREV_MODULE_VERSION"
+    
+    return $result
 }
 
 # Export only the main function
@@ -831,4 +849,4 @@ MODULE_COMMANDS=(
 )
 export MODULE_COMMANDS
 
-log_debug "User management module loaded" "$MODULE_NAME"
+log_debug "User management module loaded" "users"

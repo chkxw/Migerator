@@ -193,7 +193,7 @@ parse_and_execute_command() {
 
 # Function to parse global options and execute commands
 # Usage: parse_args [args...]
-# Returns: Exit code from the command or 1 on error
+# Returns: Exit code from the last command or 1 on error
 parse_args() {
     # Default global values
     local debug=false
@@ -202,56 +202,122 @@ parse_args() {
     local show_help=false
     local command=""
     
+    # Convert arguments to array for easier processing
+    local args=("$@")
+    local i=0
+    local args_count=${#args[@]}
+    
     # Skip past global options
-    while [[ $# -gt 0 ]]; do
-        case "$1" in
+    while [ $i -lt $args_count ]; do
+        case "${args[$i]}" in
             --debug)
                 debug=true
                 set_log_level "DEBUG"
-                shift
+                ((i++))
                 ;;
             --quiet)
                 quiet=true
                 set_log_level "ERROR"
-                shift
+                ((i++))
                 ;;
             --yes|-y)
                 yes=true
                 set_global_var "confirm_all" "true"
-                shift
+                ((i++))
                 ;;
             --help|-h)
                 show_help=true
-                shift
+                ((i++))
                 ;;
             -*)
-                log_error "Unknown option: $1" "$MODULE_NAME"
+                log_error "Unknown option: ${args[$i]}" "$MODULE_NAME"
                 print_help
                 return 1
                 ;;
             *)
                 # Assume this is a command
-                command="$1"
-                shift
                 break
                 ;;
         esac
     done
     
-    if [ "$show_help" = "true" ]; then
-        print_help "$command"
-        return 0
+    # Number of global options processed
+    local global_opts_count=$i
+    
+    # If only global options were provided, show help
+    if [ $global_opts_count -eq $args_count ]; then
+        if [ "$show_help" = "true" ]; then
+            print_help
+            return 0
+        else
+            log_error "No command specified" "$MODULE_NAME"
+            print_help
+            return 1
+        fi
     fi
     
-    if [ -z "$command" ]; then
-        log_error "No command specified" "$MODULE_NAME"
-        print_help
-        return 1
+    # Find all commands in the arguments
+    local cmd_positions=()
+    
+    # Start at the first non-global option
+    while [ $i -lt $args_count ]; do
+        local current="${args[$i]}"
+        
+        # Check if this argument is a registered command
+        if [ -n "${REGISTERED_COMMANDS[$current]}" ]; then
+            cmd_positions+=($i)
+        fi
+        
+        ((i++))
+    done
+    
+    # If no commands were found, treat the first non-global option as a command
+    if [ ${#cmd_positions[@]} -eq 0 ]; then
+        cmd_positions=($global_opts_count)
     fi
     
-    # Execute the command
-    parse_and_execute_command "$command" "$@"
-    return $?
+    # Add the end position as a sentinel
+    cmd_positions+=(${#args[@]})
+    
+    # Execute each command separately
+    local last_exit_code=0
+    local prev_end=$global_opts_count
+    
+    for ((j=0; j<${#cmd_positions[@]}-1; j++)); do
+        local cmd_start=${cmd_positions[$j]}
+        local cmd_end=${cmd_positions[$j+1]}
+        
+        # Extract the command and its arguments
+        command="${args[$cmd_start]}"
+        local cmd_args=()
+        
+        # Add global options to each command
+        for ((k=0; k<global_opts_count; k++)); do
+            cmd_args+=("${args[$k]}")
+        done
+        
+        # Add the command
+        cmd_args+=("$command")
+        
+        # Add command arguments
+        for ((k=cmd_start+1; k<cmd_end; k++)); do
+            cmd_args+=("${args[$k]}")
+        done
+        
+        if [ "$show_help" = "true" ]; then
+            print_help "$command"
+            last_exit_code=0
+        else
+            # Log what we're doing
+            log_debug "Executing command: $command ${args[@]:cmd_start+1:cmd_end-cmd_start-1}" "$MODULE_NAME"
+            
+            # Execute the command with its arguments
+            parse_and_execute_command "$command" "${args[@]:cmd_start+1:cmd_end-cmd_start-1}"
+            last_exit_code=$?
+        fi
+    done
+    
+    return $last_exit_code
 }
 
 # Function to run the CLI

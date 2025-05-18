@@ -276,7 +276,6 @@ declare -a BA_PKG_COMMON_DEPS=(
     "curl"
     "corkscrew"
     "ca-certificates"
-    "samba"
 )
 export BA_PKG_COMMON_DEPS
 export BA_PKG_COMMON_DEPS_DESCRIPTION="Common System Dependencies"
@@ -285,8 +284,6 @@ export BA_PKG_COMMON_DEPS_DESCRIPTION="Common System Dependencies"
 # Useful system tools and utilities
 declare -a BA_PKG_UTILITIES=(
     "openssh-server"
-    "git"
-    "bashtop"
     "gnome-tweaks"
     "expect"
     "dconf-editor"

@@ -69,6 +69,9 @@ else
     echo "BA_PKG_ML_TOOLS: $ba_pkg_ml_tools_count packages"
 fi
 
+# Test 2: Get Available Package Groups
+print_header "Get Available Package Groups"
+
 # Test the dynamic package group detection
 available_groups=$(get_available_package_groups)
 group_count=$(echo "$available_groups" | wc -w)
@@ -79,7 +82,40 @@ else
     report_result 1 "Failed to detect package groups dynamically"
 fi
 
-# Test 2: Get Package Group List
+# Test 3: Get Package Group Variable Name
+print_header "Get Package Group Variable Name"
+
+# Test with a valid group name
+pkg_var_name=$(get_package_group_var_name "utilities" 2>/dev/null)
+pkg_var_result=$?
+
+if [ $pkg_var_result -eq 0 ] && [ -n "$pkg_var_name" ]; then
+    report_result 0 "Successfully resolved variable name: $pkg_var_name"
+else
+    report_result 1 "Failed to resolve variable name for utilities"
+fi
+
+# Test with case-insensitive group name
+mixed_case_var_name=$(get_package_group_var_name "DeV_tOOls" 2>/dev/null)
+mixed_case_var_result=$?
+
+if [ $mixed_case_var_result -eq 0 ] && [ -n "$mixed_case_var_name" ]; then
+    report_result 0 "Successfully handled case-insensitive package group names: $mixed_case_var_name"
+else
+    report_result 1 "Failed to handle case-insensitive package group names"
+fi
+
+# Test with invalid group name
+invalid_var_name=$(get_package_group_var_name "nonexistent_group" 2>/dev/null)
+invalid_var_result=$?
+
+if [ $invalid_var_result -ne 0 ] && [ -z "$invalid_var_name" ]; then
+    report_result 0 "Correctly rejected invalid package group"
+else
+    report_result 1 "Failed to reject invalid package group"
+fi
+
+# Test 4: Get Package Group List
 print_header "Get Package Group List"
 
 # Test getting package lists for different groups
@@ -101,7 +137,7 @@ else
     report_result 1 "Failed to retrieve Common Dependencies package list"
 fi
 
-# Test case insensitivity
+# Test case insensitivity in get_package_group_list
 mixed_case_list=$(get_package_group_list "DeV_tOOls")
 mixed_case_result=$?
 
@@ -121,173 +157,262 @@ else
     report_result 1 "Failed to reject invalid package group"
 fi
 
-# Test with variable name directly
-pkg_var_name=$(get_package_group_var_name "utilities" 2>/dev/null)
-pkg_var_result=$?
+# Test 5: Get Package Group Description
+print_header "Get Package Group Description"
 
-if [ $pkg_var_result -eq 0 ] && [ -n "$pkg_var_name" ]; then
-    report_result 0 "Successfully resolved variable name: $pkg_var_name"
+# Test getting description for a valid group
+badger_rl_desc=$(get_package_group_description "badger_rl_deps")
+badger_rl_desc_result=$?
+
+if [ $badger_rl_desc_result -eq 0 ] && [ -n "$badger_rl_desc" ]; then
+    report_result 0 "Successfully retrieved BadgerRL Deps package description: $badger_rl_desc"
 else
-    report_result 1 "Failed to resolve variable name for utilities"
+    report_result 1 "Failed to retrieve BadgerRL Deps package description"
 fi
 
-# Test 3: Package Group Details
-print_header "Package Group Details"
-
-# Test getting package group details
-badger_rl_details=$(print_package_group_details "badger_rl_deps")
-badger_rl_details_result=$?
-
-if [ $badger_rl_details_result -eq 0 ] && [[ "$badger_rl_details" == *"Package Group: badger_rl_deps"* ]]; then
-    report_result 0 "Successfully printed BadgerRL Deps package group details"
-else
-    report_result 1 "Failed to print BadgerRL Deps package group details"
-fi
-
-# Test with a dynamic group name from our detected list
-if [ $group_count -gt 0 ]; then
-    # Get the first group from our available groups
-    first_group=$(echo "$available_groups" | awk '{print $1}')
-    first_group_details=$(print_package_group_details "$first_group")
-    first_group_details_result=$?
-    
-    if [ $first_group_details_result -eq 0 ] && [[ "$first_group_details" == *"Package Group: $first_group"* ]]; then
-        report_result 0 "Successfully printed dynamically detected group details: $first_group"
+# Test for a group with description from global variable
+if [ -n "$BA_PKG_BADGER_RL_DEPS_DESCRIPTION" ]; then
+    desc_match=$( [ "$badger_rl_desc" = "$BA_PKG_BADGER_RL_DEPS_DESCRIPTION" ] && echo "true" || echo "false" )
+    if [ "$desc_match" = "true" ]; then
+        report_result 0 "Description matches global variable definition"
     else
-        report_result 1 "Failed to print dynamically detected group details: $first_group"
+        report_result 1 "Description does not match global variable definition"
+        echo "Expected: $BA_PKG_BADGER_RL_DEPS_DESCRIPTION"
+        echo "Got: $badger_rl_desc"
     fi
 fi
 
-# Test with invalid group name
-invalid_group_details=$(print_package_group_details "nonexistent_group" 2>/dev/null)
-invalid_group_details_result=$?
+# Test case insensitivity
+mixed_case_desc=$(get_package_group_description "DeV_tOOls")
+mixed_case_desc_result=$?
 
-if [ $invalid_group_details_result -ne 0 ]; then
-    report_result 0 "Correctly rejected invalid package group for details"
+if [ $mixed_case_desc_result -eq 0 ] && [ -n "$mixed_case_desc" ]; then
+    report_result 0 "Successfully handled case-insensitive group name for description"
 else
-    report_result 1 "Failed to reject invalid package group for details"
+    report_result 1 "Failed to handle case-insensitive group name for description"
 fi
 
-# Test 4: CLI Help Message
+# Test generating description for non-existent group
+nonexistent_desc=$(get_package_group_description "nonexistent_group")
+nonexistent_desc_result=$?
+
+if [ $nonexistent_desc_result -eq 0 ] && [ -n "$nonexistent_desc" ] && 
+   [[ "$nonexistent_desc" == *"Package Group"* ]]; then
+    report_result 0 "Successfully generated description for non-existent group: $nonexistent_desc"
+else
+    report_result 1 "Failed to generate description for non-existent group"
+fi
+
+# Test 6: Module Context Preservation
+print_header "Module Context Preservation"
+
+# Verify that MODULE_NAME is not set at the module level
+if [ -z "$MODULE_NAME" ]; then
+    report_result 0 "MODULE_NAME is not set at the module level"
+else
+    report_result 1 "MODULE_NAME is set at the module level: $MODULE_NAME"
+fi
+
+# Test setting module context in the main function
+echo "Setting custom MODULE_NAME before calling batch_packages_main..."
+MODULE_NAME="custom_module_name"
+MODULE_DESCRIPTION="custom_description"
+MODULE_VERSION="custom_version"
+
+batch_packages_main list > /dev/null 2>&1
+
+# Check if MODULE_NAME was restored
+if [ "$MODULE_NAME" = "custom_module_name" ]; then
+    report_result 0 "MODULE_NAME was properly restored after function call"
+else
+    report_result 1 "MODULE_NAME was not restored, current value: $MODULE_NAME"
+fi
+
+# Check if MODULE_DESCRIPTION was restored
+if [ "$MODULE_DESCRIPTION" = "custom_description" ]; then
+    report_result 0 "MODULE_DESCRIPTION was properly restored after function call"
+else
+    report_result 1 "MODULE_DESCRIPTION was not restored, current value: $MODULE_DESCRIPTION"
+fi
+
+# Check if MODULE_VERSION was restored
+if [ "$MODULE_VERSION" = "custom_version" ]; then
+    report_result 0 "MODULE_VERSION was properly restored after function call"
+else
+    report_result 1 "MODULE_VERSION was not restored, current value: $MODULE_VERSION"
+fi
+
+# Test 7: CLI Help Message
 print_header "CLI Help Message"
 
-# Test batch_packages module CLI help
-help_output=$(batch_packages_main --help 2>/dev/null)
+# Test batch_packages_main help command (must pass no arguments to get help)
+help_output=$(batch_packages_main)
 help_result=$?
-
-# Debug: show help output
-echo "DEBUG: Help output length: ${#help_output} characters"
-echo "DEBUG: First 50 characters: ${help_output:0:50}"
 
 # Test if the help message contains the expected sections
 if [[ "$help_output" == *"Commands:"* ]] && 
    [[ "$help_output" == *"Options:"* ]] && 
-   [[ "$help_output" == *"Available package groups:"* ]] && 
-   [[ "$help_output" == *"Available purposes:"* ]]; then
-    report_result 0 "CLI help message is generated correctly"
+   [[ "$help_output" == *"Available package groups:"* ]]; then
+    report_result 0 "CLI help message contains expected sections"
 else
-    report_result 1 "CLI help message is not generated correctly"
+    report_result 1 "CLI help message is missing expected sections"
+    echo "Help output: $help_output"
 fi
 
-# Test 5: List Command
+# Test -h option for help command
+help_h_output=$(batch_packages_main -h)
+help_h_result=$?
+
+# Test if -h option produces the same help message
+if [ "$help_h_output" = "$help_output" ]; then
+    report_result 0 "CLI help message with -h option works correctly"
+else
+    report_result 1 "CLI help message with -h option does not match default help message"
+    echo "Help -h output differs from standard help output"
+fi
+
+# Test if help contains a list of available package groups
+if [[ "$help_output" == *"utilities"* ]] && 
+   [[ "$help_output" == *"dev_tools"* ]] && 
+   [[ "$help_output" == *"badger_rl_deps"* ]]; then
+    report_result 0 "CLI help message lists available package groups"
+else
+    report_result 1 "CLI help message is missing package group listing"
+fi
+
+# Test 8: List Command
 print_header "List Command"
 
 # Test the list command
-list_output=$(batch_packages_main list 2>/dev/null)
+list_output=$(batch_packages_main list)
 list_result=$?
 
 if [ $list_result -eq 0 ] && 
    [[ "$list_output" == *"Available package groups:"* ]] && 
-   [[ "$list_output" == *"Available purposes:"* ]]; then
-    report_result 0 "List command works correctly"
+   [[ "$list_output" == *"Packages:"* ]]; then
+    report_result 0 "List command shows groups and their packages"
 else
-    report_result 1 "List command does not work correctly"
+    report_result 1 "List command output is incorrect"
+    echo "List output: $list_output"
 fi
 
-# Test 6: Installation Simulation
+# Test 9: Installation Simulation
 print_header "Installation Simulation"
+
+# Override real package installation functions for simulation
+install_package_group_original="$(declare -f install_package_group)"
+remove_package_group_original="$(declare -f remove_package_group)"
+
+# Override installation function to simulate without actually installing
+install_package_group() {
+    local group_name="$1"
+    local force="$2"
+    
+    # Get package list for the specified group
+    local package_list=$(get_package_group_list "$group_name")
+    if [ -z "$package_list" ]; then
+        return 1
+    fi
+    
+    echo "SIMULATION: Would install package group: $group_name"
+    echo "SIMULATION: Packages: $package_list"
+    echo "SIMULATION: Force flag: $force"
+    return 0
+}
+export -f install_package_group
+
+# Override removal function to simulate without actually removing
+remove_package_group() {
+    local group_name="$1"
+    shift
+    
+    # Get package list for the specified group
+    local package_list=$(get_package_group_list "$group_name")
+    if [ -z "$package_list" ]; then
+        return 1
+    fi
+    
+    echo "SIMULATION: Would remove package group: $group_name"
+    echo "SIMULATION: Packages: $package_list"
+    echo "SIMULATION: Options: $@"
+    return 0
+}
+export -f remove_package_group
 
 # Set auto-confirmation for testing
 set_global_var "confirm_all" "true"
 
-# Test installation simulation by running in "fake" mode
-# This is just testing the function signature and structure
-# without actually installing anything
-
-echo "Testing group installation function signature"
-if command -v install_package_group &>/dev/null; then
-    report_result 0 "Group installation function is available"
-else
-    report_result 1 "Group installation function is not available"
+# Test install command with a valid group
+if [ $group_count -gt 0 ]; then
+    first_group=$(echo "$available_groups" | awk '{print $1}')
+    install_output=$(batch_packages_main install "$first_group" --force)
+    install_result=$?
+    
+    if [ $install_result -eq 0 ] && [[ "$install_output" == *"SIMULATION: Would install package group: $first_group"* ]]; then
+        report_result 0 "Install command works correctly with: $first_group"
+    else
+        report_result 1 "Install command failed with: $first_group"
+        echo "Install output: $install_output"
+    fi
+    
+    # Test remove command with the same group
+    remove_output=$(batch_packages_main remove "$first_group" --purge --force)
+    remove_result=$?
+    
+    if [ $remove_result -eq 0 ] && [[ "$remove_output" == *"SIMULATION: Would remove package group: $first_group"* ]]; then
+        report_result 0 "Remove command works correctly with: $first_group"
+    else
+        report_result 1 "Remove command failed with: $first_group"
+        echo "Remove output: $remove_output"
+    fi
 fi
 
-echo "Testing purpose installation function signature"
-if command -v install_purpose_packages &>/dev/null; then
-    report_result 0 "Purpose installation function is available"
-else
-    report_result 1 "Purpose installation function is not available"
-fi
+# Test 10: Error Handling
+print_header "Error Handling"
 
-echo "Testing old setup installation function signature"
-if command -v install_old_setup_packages &>/dev/null; then
-    report_result 0 "Old setup installation function is available"
-else
-    report_result 1 "Old setup installation function is not available"
-fi
-
-# Test 7: Invalid Commands and Options
-print_header "Invalid Commands and Options"
-
-# Test invalid command
+# Test with invalid command
 invalid_cmd_output=$(batch_packages_main invalid_command 2>&1 || echo "Command failed")
-invalid_cmd_result=$?
 
 if [[ "$invalid_cmd_output" == *"Unknown command"* || "$invalid_cmd_output" == *"Command failed"* ]]; then
     report_result 0 "Invalid command is rejected properly"
 else
-    report_result 1 "Invalid command is not rejected properly: Result=$invalid_cmd_result, Output=$invalid_cmd_output"
+    report_result 1 "Invalid command is not rejected properly"
+    echo "Output: $invalid_cmd_output"
 fi
 
-# Test invalid group
-invalid_group_output=$(batch_packages_main group nonexistent_group 2>&1)
-invalid_group_result=$?
+# Test install with invalid group
+invalid_install_output=$(batch_packages_main install nonexistent_group 2>&1 || echo "Command failed")
 
-if [ $invalid_group_result -ne 0 ]; then
-    report_result 0 "Invalid group is rejected properly"
+if [[ "$invalid_install_output" == *"Unknown package group"* || "$invalid_install_output" == *"Command failed"* ]]; then
+    report_result 0 "Install with invalid group is rejected properly"
 else
-    report_result 1 "Invalid group is not rejected properly"
+    report_result 1 "Install with invalid group is not rejected properly"
+    echo "Output: $invalid_install_output"
 fi
 
-# Test valid group (using one of our dynamically detected groups)
-if [ $group_count -gt 0 ]; then
-    first_group=$(echo "$available_groups" | awk '{print $1}')
-    # Just check if the group command is accepted (don't actually install)
-    # We'll override the install_package_group function to avoid any real installation
-    install_package_group() {
-        echo "Would install package group: $1"
-        return 0
-    }
-    export -f install_package_group
-    
-    valid_group_output=$(batch_packages_main group "$first_group" --force 2>&1)
-    valid_group_result=$?
-    
-    if [ $valid_group_result -eq 0 ] && [[ "$valid_group_output" == *"Would install package group: $first_group"* ]]; then
-        report_result 0 "Valid group is accepted properly: $first_group"
-    else
-        report_result 1 "Valid group is not accepted properly: $first_group"
-    fi
-fi
+# Test remove with invalid group
+invalid_remove_output=$(batch_packages_main remove nonexistent_group 2>&1 || echo "Command failed")
 
-# Test invalid purpose
-invalid_purpose_output=$(batch_packages_main purpose nonexistent_purpose 2>&1)
-invalid_purpose_result=$?
-
-if [ $invalid_purpose_result -ne 0 ]; then
-    report_result 0 "Invalid purpose is rejected properly"
+if [[ "$invalid_remove_output" == *"Unknown package group"* || "$invalid_remove_output" == *"Command failed"* ]]; then
+    report_result 0 "Remove with invalid group is rejected properly"
 else
-    report_result 1 "Invalid purpose is not rejected properly"
+    report_result 1 "Remove with invalid group is not rejected properly"
+    echo "Output: $invalid_remove_output"
 fi
+
+# Test install without group name
+missing_group_output=$(batch_packages_main install 2>&1 || echo "Command failed")
+
+if [[ "$missing_group_output" == *"No group name specified"* || "$missing_group_output" == *"Command failed"* ]]; then
+    report_result 0 "Install without group name is rejected properly"
+else
+    report_result 1 "Install without group name is not rejected properly"
+    echo "Output: $missing_group_output"
+fi
+
+# Restore original functions
+eval "$install_package_group_original"
+eval "$remove_package_group_original"
 
 echo "🏁 Batch Package Management Test Suite Completed"
 echo ""

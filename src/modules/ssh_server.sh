@@ -13,12 +13,8 @@ source "$PROJECT_ROOT/src/core/sudo.sh"
 source "$PROJECT_ROOT/src/core/file_ops.sh"
 source "$PROJECT_ROOT/src/core/package_manager.sh"
 
-# Module info
-MODULE_NAME="ssh_server"
-MODULE_DESCRIPTION="Setup and configure SSH server"
-MODULE_VERSION="1.0.0"
-
-log_debug "Loading SSH server module" "$MODULE_NAME"
+# Log with hard-coded module name for initial loading
+log_debug "Loading SSH server module" "ssh_server"
 
 # Function to generate SSH server configuration content
 # Usage: ssh_server_generate_config [port]
@@ -141,6 +137,16 @@ ssh_server_cleanup() {
 #   --help            Display this help message
 # Returns: 0 on success, 1 on failure
 ssh_server_main() {
+    # Save previous module context
+    local PREV_MODULE_NAME="$MODULE_NAME"
+    local PREV_MODULE_DESCRIPTION="$MODULE_DESCRIPTION"
+    local PREV_MODULE_VERSION="$MODULE_VERSION"
+    
+    # Set this module's context
+    MODULE_NAME="ssh_server"
+    MODULE_DESCRIPTION="Setup and configure SSH server"
+    MODULE_VERSION="1.0.0"
+    
     log_debug "SSH server module main function called with args: $@" "$MODULE_NAME"
     
     # Default values
@@ -167,10 +173,18 @@ Options:
   --cleanup         Remove SSH server configuration and disable service
   --help            Display this help message
 EOF
+                # Restore previous module context
+                MODULE_NAME="$PREV_MODULE_NAME"
+                MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+                MODULE_VERSION="$PREV_MODULE_VERSION"
                 return 0
                 ;;
             *)
                 log_error "Unknown option: $1" "$MODULE_NAME"
+                # Restore previous module context
+                MODULE_NAME="$PREV_MODULE_NAME"
+                MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+                MODULE_VERSION="$PREV_MODULE_VERSION"
                 return 1
                 ;;
         esac
@@ -181,30 +195,44 @@ EOF
         if $cleanup; then
             if ! confirm "Remove SSH server configuration and disable service?"; then
                 log_warning "SSH server cleanup cancelled by user" "$MODULE_NAME"
+                # Restore previous module context
+                MODULE_NAME="$PREV_MODULE_NAME"
+                MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+                MODULE_VERSION="$PREV_MODULE_VERSION"
                 return 1
             fi
         else
             if ! confirm "Set up SSH server with port $port?"; then
                 log_warning "SSH server setup cancelled by user" "$MODULE_NAME"
+                # Restore previous module context
+                MODULE_NAME="$PREV_MODULE_NAME"
+                MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+                MODULE_VERSION="$PREV_MODULE_VERSION"
                 return 1
             fi
         fi
     fi
     
     # Execute requested operation
+    local result=0
     if $cleanup; then
         if ! ssh_server_cleanup "$port"; then
             log_error "SSH server cleanup failed" "$MODULE_NAME"
-            return 1
+            result=1
         fi
     else
         if ! ssh_server_setup "$port"; then
             log_error "SSH server setup failed" "$MODULE_NAME"
-            return 1
+            result=1
         fi
     fi
     
-    return 0
+    # Restore previous module context
+    MODULE_NAME="$PREV_MODULE_NAME"
+    MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+    MODULE_VERSION="$PREV_MODULE_VERSION"
+    
+    return $result
 }
 
 # Export only the main function and necessary functions
@@ -219,4 +247,4 @@ MODULE_COMMANDS=(
 )
 export MODULE_COMMANDS
 
-log_debug "SSH server module loaded" "$MODULE_NAME"
+log_debug "SSH server module loaded" "ssh_server"

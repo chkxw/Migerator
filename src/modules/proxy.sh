@@ -12,12 +12,8 @@ source "$PROJECT_ROOT/src/core/globals.sh"
 source "$PROJECT_ROOT/src/core/sudo.sh"
 source "$PROJECT_ROOT/src/core/file_ops.sh"
 
-# Module info
-MODULE_NAME="proxy"
-MODULE_DESCRIPTION="Configure system-wide proxy settings"
-MODULE_VERSION="1.0.0"
-
-log_debug "Loading proxy module" "$MODULE_NAME"
+# Log with hard-coded module name for initial loading
+log_debug "Loading proxy module" "proxy"
 
 # Function to generate proxy environment variables content
 # Args: $1 - host, $2 - port
@@ -375,6 +371,16 @@ source /etc/profile.d/proxy.sh"
 #   --help            Display this help message
 # Returns: 0 on success, 1 on failure
 proxy_main() {
+    # Save previous module context
+    local PREV_MODULE_NAME="$MODULE_NAME"
+    local PREV_MODULE_DESCRIPTION="$MODULE_DESCRIPTION"
+    local PREV_MODULE_VERSION="$MODULE_VERSION"
+    
+    # Set this module's context
+    MODULE_NAME="proxy"
+    MODULE_DESCRIPTION="Configure system-wide proxy settings"
+    MODULE_VERSION="1.0.0"
+    
     log_debug "Proxy module main function called with args: $@" "$MODULE_NAME"
     
     # Default values
@@ -415,10 +421,18 @@ Options:
   --remove          Remove proxy configuration instead of adding it
   --help            Display this help message
 EOF
+                # Restore previous module context
+                MODULE_NAME="$PREV_MODULE_NAME"
+                MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+                MODULE_VERSION="$PREV_MODULE_VERSION"
                 return 0
                 ;;
             *)
                 log_error "Unknown option: $1" "$MODULE_NAME"
+                # Restore previous module context
+                MODULE_NAME="$PREV_MODULE_NAME"
+                MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+                MODULE_VERSION="$PREV_MODULE_VERSION"
                 return 1
                 ;;
         esac
@@ -427,6 +441,10 @@ EOF
     # Check if proxy settings are valid
     if [ -z "$host" ] || [ -z "$port" ]; then
         log_error "Invalid proxy settings: host=$host, port=$port" "$MODULE_NAME"
+        # Restore previous module context
+        MODULE_NAME="$PREV_MODULE_NAME"
+        MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+        MODULE_VERSION="$PREV_MODULE_VERSION"
         return 1
     fi
     
@@ -441,11 +459,19 @@ EOF
         if $remove; then
             if ! confirm "Remove proxy configuration with these settings?"; then
                 log_warning "Proxy removal cancelled by user" "$MODULE_NAME"
+                # Restore previous module context
+                MODULE_NAME="$PREV_MODULE_NAME"
+                MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+                MODULE_VERSION="$PREV_MODULE_VERSION"
                 return 1
             fi
         else
             if ! confirm "Configure proxy with these settings?"; then
                 log_warning "Proxy setup cancelled by user" "$MODULE_NAME"
+                # Restore previous module context
+                MODULE_NAME="$PREV_MODULE_NAME"
+                MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+                MODULE_VERSION="$PREV_MODULE_VERSION"
                 return 1
             fi
         fi
@@ -490,6 +516,11 @@ EOF
         fi
     fi
     
+    # Restore previous module context
+    MODULE_NAME="$PREV_MODULE_NAME"
+    MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+    MODULE_VERSION="$PREV_MODULE_VERSION"
+    
     return $result
 }
 
@@ -504,4 +535,4 @@ MODULE_COMMANDS=(
 )
 export MODULE_COMMANDS
 
-log_debug "Proxy module loaded" "$MODULE_NAME"
+log_debug "Proxy module loaded" "proxy"

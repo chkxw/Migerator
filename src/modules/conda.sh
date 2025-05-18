@@ -12,12 +12,8 @@ source "$PROJECT_ROOT/src/core/globals.sh"
 source "$PROJECT_ROOT/src/core/sudo.sh"
 source "$PROJECT_ROOT/src/core/file_ops.sh"
 
-# Module info
-MODULE_NAME="conda"
-MODULE_DESCRIPTION="Install and configure Conda (Miniconda/Miniforge)"
-MODULE_VERSION="1.0.0"
-
-log_debug "Loading conda module" "$MODULE_NAME"
+# Log with hard-coded module name for initial loading
+log_debug "Loading conda module" "conda"
 
 # Function to generate conda initialization content for bash
 # Args: $1 - conda installation path
@@ -272,6 +268,16 @@ conda_create_env() {
 #   --help            Display this help message
 # Returns: 0 on success, 1 on failure
 conda_main() {
+    # Save previous module context
+    local PREV_MODULE_NAME="$MODULE_NAME"
+    local PREV_MODULE_DESCRIPTION="$MODULE_DESCRIPTION"
+    local PREV_MODULE_VERSION="$MODULE_VERSION"
+    
+    # Set this module's context
+    MODULE_NAME="conda"
+    MODULE_DESCRIPTION="Install and configure Conda (Miniconda/Miniforge)"
+    MODULE_VERSION="1.0.0"
+    
     log_debug "Conda module main function called with args: $@" "$MODULE_NAME"
     
     # Default values
@@ -328,10 +334,18 @@ Options:
   --remove          Remove conda installation
   --help            Display this help message
 EOF
+                # Restore previous module context
+                MODULE_NAME="$PREV_MODULE_NAME"
+                MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+                MODULE_VERSION="$PREV_MODULE_VERSION"
                 return 0
                 ;;
             *)
                 log_error "Unknown option: $1" "$MODULE_NAME"
+                # Restore previous module context
+                MODULE_NAME="$PREV_MODULE_NAME"
+                MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+                MODULE_VERSION="$PREV_MODULE_VERSION"
                 return 1
                 ;;
         esac
@@ -340,6 +354,10 @@ EOF
     # Validate conda type
     if [ "$conda_type" != "miniconda" ] && [ "$conda_type" != "miniforge" ]; then
         log_error "Invalid conda type: $conda_type. Must be 'miniconda' or 'miniforge'" "$MODULE_NAME"
+        # Restore previous module context
+        MODULE_NAME="$PREV_MODULE_NAME"
+        MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+        MODULE_VERSION="$PREV_MODULE_VERSION"
         return 1
     fi
     
@@ -348,16 +366,28 @@ EOF
         if $remove; then
             if ! confirm "Remove conda installation from $conda_path?"; then
                 log_warning "Conda removal cancelled by user" "$MODULE_NAME"
+                # Restore previous module context
+                MODULE_NAME="$PREV_MODULE_NAME"
+                MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+                MODULE_VERSION="$PREV_MODULE_VERSION"
                 return 1
             fi
         elif $init_only; then
             if ! confirm "Initialize conda from $conda_path?"; then
                 log_warning "Conda initialization cancelled by user" "$MODULE_NAME"
+                # Restore previous module context
+                MODULE_NAME="$PREV_MODULE_NAME"
+                MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+                MODULE_VERSION="$PREV_MODULE_VERSION"
                 return 1
             fi
         else
             if ! confirm "Install $conda_type to $conda_path?"; then
                 log_warning "Conda installation cancelled by user" "$MODULE_NAME"
+                # Restore previous module context
+                MODULE_NAME="$PREV_MODULE_NAME"
+                MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+                MODULE_VERSION="$PREV_MODULE_VERSION"
                 return 1
             fi
         fi
@@ -407,6 +437,11 @@ EOF
         log_error "Conda operation completed with errors" "$MODULE_NAME"
     fi
     
+    # Restore previous module context
+    MODULE_NAME="$PREV_MODULE_NAME"
+    MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+    MODULE_VERSION="$PREV_MODULE_VERSION"
+    
     return $result
 }
 
@@ -419,4 +454,4 @@ MODULE_COMMANDS=(
 )
 export MODULE_COMMANDS
 
-log_debug "Conda module loaded" "$MODULE_NAME"
+log_debug "Conda module loaded" "conda"
