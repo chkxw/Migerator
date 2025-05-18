@@ -1,0 +1,78 @@
+### Folders
+- materials: All the relavant materials you need, as well as the information you collect from the internet should be store here
+- intermediates: intermediate materials, you can use it as your draft board. Current progress and todo list is also here
+  -  todo_list.txt: Records the current todo list. 
+  -  current_progress.txt: file records the current progress 
+- outputs: The final product should be put here
+### Start
+Start by reading the CALUDE.md, as well as todo_list.txt and current_progress.txt if presented. And explain what we want to do, as well as current progress to the user
+
+### Requirement
+Before doing each part, first list out the requirements for those part explicitly by referring to rubrics/sample materials, put the requirements down in intermediates, then do the job and put the result in outputs
+
+NEVER PROCEED to the next task before I tell you! stop after each task for me to review your work
+
+### Task
+
+As you see, this is an old bash script for setting up our lab computer from scratch, and then, I extended it to setup my own computer, which don't need shared user and shared folder etc. You can safely assume we always work on Uuntu, but the version might be different
+
+The idea behind this script is to: safely modify the config files as many functionaly can be configed using files in Ubuntu (Ensure each config file is modified once and only once), so that I can setup a computer fast despite different versions of Ubuntu. 
+
+However, I wrote it in such a hurry that now this script get choatic. I want to write a new script which is: 
+- single file, 
+- modularized functionality with multiple level of abstraction
+  - zero level: multiple helper functions 
+  - the frist level is low leveltools like Sudo (use sudo to execute some command), registering packages, and safe_modify_file, etc.
+  - the second level is high level functionality for example, setup proxy, install one packages (after using level 1 abstractions to register the package, and may also include some pre/post processing like for installing miniconda). Or installing one functionlaity, like installing virtualGL+configuring it+installing TurboVNC
+Current concerns: 
+
+#### Review 0
+- Currently the Sudo works as to copy the functions to a new file and use it, so all the variables meed to be stored in function manner. This is actually very strange and shouldn't work this way
+
+#### Review 1
+- Despite the final result should be a single file, I still want to develop in a modularized way, so that we can easily add new functionality in the future.
+- The root global file is a file that contains all the global variables and helper functions as well as level 0, level 1 abstractions functionalities implementations.
+- Level 2 abstractions should be implemented in separate files
+  My idea is, we manually create variable scope by creating a new file for each functionality, each file have its own variables (local), and each file can source a root global file to use global var and use shared helper function / level 1 abstractions
+- A interactive CLI interface should be in another file, which will also search a folder (specified in global var, usually "./") for level 2 abstractions and provide a nice, interactive CLI interface that users can use to interact with the script. usually, user will only select 2 level of abstractions. The scripts should enabling both CLI mode and interactive mode.
+  - In CLI mode, it will parse command in this way
+    - `./setup.sh <-global options>... [level2 command] <-option> <-option> <-option> .... [Next level2 command]`
+  - Global options: It will control if we need to confirm before doing safe modification (the behavior of some level 1 abstractions)
+  - level 2 pattern: 
+    Genreally, no matter in which mode, the CLI only serves as a command dispatcher and controll always get passed to subcommand for execution. It just compare each term to names of level 2 commands and splite the command into global options + a list of level 2 commands.
+- For example, set up comand could be a level 2 abtraction functionality with the following pattern:
+  - `./setup.sh conda --use-miniforge [Next level2 command]`
+  - If a level 2 abstraction don't get enough information it need to complete its execution, it will go into interactive mode and ask for more information, so , you might also need other interactive functions for users to provide more information (maybe write soem new Level 0 helper functions)
+  
+#### Review 2
+- for each package installation now, I use a different function, but I think we can separate it into two parts. One is adding the package (gpg+ list file), and another function for install , so we can share the code for registering the package and a bunch of data array for each package and referred by the package's nickname
+  
+- Nickname (chrome), used for referring to the package and well as the gpg key and list file name chrome.gpg/chrome.list
+  
+- The data array should consist:
+  - package name (The formal name of the installed package, google-chrome-stable), for checking the installation/install command
+  - gpg key site https://dl.google.com/linux/linux_signing_key.pub
+  - arch (Can be empty, let the machine deduce)
+  - version name (jammy, noble etc.) Now this is hardcoded, but I want it to be either deduceable or hardcoded, as some package as slack only support jessie version, also like vscode, this name is stable, and for nodejs, it's nodistro
+  - release branch name, usually main
+  - If we have deb-src, some package provide deb-src, we can use a booling to record that, and write a deb-src entry in the list file
+- Also, since we deduce some of the compoenent, I want to check if the package is avaible at the site before writing the config to .gpg and .list files, maybe you need a new helper function for that
+
+#### Review 3
+Currently, we separate sudo execution by copying all functions to a new file and execute with sudo permission. However, I think we didn't pass the envriables right, as we directly use sudo instead of sudo -E. For global vars, which might set a global var to indicate confirm should be skipped, we need also to pass that to sudo executor.
+
+#### Implementation guide line
+
+Current script is too coatic, and many implementation like Sudo might not be correct (It lost all the env vars). So We want to start from scratch
+
+During the implementation, I want you to: use detailed logging, both the global script and the sub scripts should have logging option, with log level controlled by a env var. This is your main way for debugging. Usually I will provide you the execute log and you need to locate the bug and modify it. So put a debug log wherever you think is necessary and never need to remove debug log (as we can deactivate it through log level). Each debug log should contain a [] precedding to tell where the log is from (which functionality)
+
+Let's first rewrite the tests for all level 1 functionalities (no need to test for level 0 as they are too simple). For Sudo, you need to ensure the su executor inherit all the env vars and execute the correct function. For safe modify you need to ensure the output file is correct in any way. Remember to clean up all changes after testing. Also, it's ok for you to try dangerous things as you are in a sandbox, you don't need to worry about breaking the computer.
+
+So the process should be test all level 1 fucntionality one by one, start with this
+
+For testing, for each function, you should create a folder in ./tests to do a comprehensive test. List out the tests for a level 1 function before proceed, cover all corener cases!.
+
+
+
+
