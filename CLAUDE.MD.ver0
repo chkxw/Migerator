@@ -74,5 +74,3 @@ So the process should be test all level 1 fucntionality one by one, start with t
 For testing, for each function, you should create a folder in ./tests to do a comprehensive test. List out the tests for a level 1 function before proceed, cover all corener cases!.
 
 
-
-

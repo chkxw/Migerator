@@ -70,12 +70,12 @@ test_repo_entry_template "virtualgl"
 log_info "Test 3: Package repository availability check" "test_package"
 
 # Check repository availability
-for nickname in "chrome" "vscode" "virtualgl" "nodejs" "nonexistent"; do
+for nickname in "chrome" "vscode" "virtualgl" "turbovnc" "nodejs" "nonexistent"; do
     if [[ "$nickname" != "nonexistent" ]]; then
         if check_package_repo_available "$nickname"; then
             log_info "Test passed: Repository $nickname is available" "test_package" 
         else
-            log_info "Test passed: Repository $nickname is not available" "test_package"
+            log_error "Test failed: Repository $nickname is not available" "test_package"
         fi
     else
         # Nonexistent repository should fail

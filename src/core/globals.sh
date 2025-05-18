@@ -34,31 +34,85 @@ declare -A SCRIPT_CONFIG
 SCRIPT_CONFIG[confirm_all]="false"
 SCRIPT_CONFIG[log_level]="2" # INFO level
 
-# Array of regular users (regular lab members)
-declare -a LAB_USERS=(
-    "Joseph Zhong"
-    "Chen Li"
-    "Erika Sy"
-    "Allen Chien"
-    "Nicholas Corrado"
-    "Andrew Wang"
-    "Subhojyoti Mukerjee"
-    "Brahma Pavse"
-    "Will Cong"
-    "Alan Zhong"
-    "Brennen Hill"
-    "Jeffrey Zou"
-    "Zisen Shao"
-)
+# User information
+# Structure: fullname join_year is_superuser
+declare -A USER_FULLNAME
+declare -A USER_JOIN_YEAR
+declare -A USER_IS_SUPERUSER
 
-# Array of super users (will be given sudo access)
-declare -a LAB_SUPER_USERS=(
-    "Benjamin Hong"
-    "Abhinav Harish"
-    "Adam Labiosa"
-    "Yunfu Deng"
-    "Yuhao Li"
-)
+# Regular lab members
+USER_FULLNAME["joseph_zhong"]="Joseph Zhong"
+USER_JOIN_YEAR["joseph_zhong"]="2024"
+USER_IS_SUPERUSER["joseph_zhong"]="false"
+
+USER_FULLNAME["chen_li"]="Chen Li"
+USER_JOIN_YEAR["chen_li"]="2024"
+USER_IS_SUPERUSER["chen_li"]="false"
+
+USER_FULLNAME["erika_sy"]="Erika Sy"
+USER_JOIN_YEAR["erika_sy"]="2024"
+USER_IS_SUPERUSER["erika_sy"]="false"
+
+USER_FULLNAME["allen_chien"]="Allen Chien"
+USER_JOIN_YEAR["allen_chien"]="2024"
+USER_IS_SUPERUSER["allen_chien"]="false"
+
+USER_FULLNAME["nicholas_corrado"]="Nicholas Corrado"
+USER_JOIN_YEAR["nicholas_corrado"]="2024"
+USER_IS_SUPERUSER["nicholas_corrado"]="false"
+
+USER_FULLNAME["andrew_wang"]="Andrew Wang"
+USER_JOIN_YEAR["andrew_wang"]="2024"
+USER_IS_SUPERUSER["andrew_wang"]="false"
+
+USER_FULLNAME["subhojyoti_mukerjee"]="Subhojyoti Mukerjee"
+USER_JOIN_YEAR["subhojyoti_mukerjee"]="2024"
+USER_IS_SUPERUSER["subhojyoti_mukerjee"]="false"
+
+USER_FULLNAME["brahma_pavse"]="Brahma Pavse"
+USER_JOIN_YEAR["brahma_pavse"]="2024"
+USER_IS_SUPERUSER["brahma_pavse"]="false"
+
+USER_FULLNAME["will_cong"]="Will Cong"
+USER_JOIN_YEAR["will_cong"]="2024"
+USER_IS_SUPERUSER["will_cong"]="false"
+
+USER_FULLNAME["alan_zhong"]="Alan Zhong"
+USER_JOIN_YEAR["alan_zhong"]="2024"
+USER_IS_SUPERUSER["alan_zhong"]="false"
+
+USER_FULLNAME["brennen_hill"]="Brennen Hill"
+USER_JOIN_YEAR["brennen_hill"]="2024"
+USER_IS_SUPERUSER["brennen_hill"]="false"
+
+USER_FULLNAME["jeffrey_zou"]="Jeffrey Zou"
+USER_JOIN_YEAR["jeffrey_zou"]="2024"
+USER_IS_SUPERUSER["jeffrey_zou"]="false"
+
+USER_FULLNAME["zisen_shao"]="Zisen Shao"
+USER_JOIN_YEAR["zisen_shao"]="2024"
+USER_IS_SUPERUSER["zisen_shao"]="false"
+
+# Super users (with sudo access)
+USER_FULLNAME["benjamin_hong"]="Benjamin Hong"
+USER_JOIN_YEAR["benjamin_hong"]="2024"
+USER_IS_SUPERUSER["benjamin_hong"]="true"
+
+USER_FULLNAME["abhinav_harish"]="Abhinav Harish"
+USER_JOIN_YEAR["abhinav_harish"]="2024"
+USER_IS_SUPERUSER["abhinav_harish"]="true"
+
+USER_FULLNAME["adam_labiosa"]="Adam Labiosa"
+USER_JOIN_YEAR["adam_labiosa"]="2024"
+USER_IS_SUPERUSER["adam_labiosa"]="true"
+
+USER_FULLNAME["yunfu_deng"]="Yunfu Deng"
+USER_JOIN_YEAR["yunfu_deng"]="2024"
+USER_IS_SUPERUSER["yunfu_deng"]="true"
+
+USER_FULLNAME["yuhao_li"]="Yuhao Li"
+USER_JOIN_YEAR["yuhao_li"]="2024"
+USER_IS_SUPERUSER["yuhao_li"]="true"
 
 # Package repository information
 # Structure: nickname pkg_formal_name gpg_key_url pkg_arch pkg_version_codename pkg_branch pkg_deb_src repo_base_url
@@ -142,6 +196,60 @@ PKG_BRANCH[wine]="main"
 PKG_DEB_SRC[wine]="false"
 PKG_REPO_BASE_URL[wine]="https://dl.winehq.org/wine-builds/ubuntu"
 
+# FFmpeg
+PKG_FORMAL_NAME[ffmpeg]="ffmpeg"
+PKG_GPG_KEY_URL[ffmpeg]="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xf4e48910a020e77056748b745738ae8480447ddf"
+PKG_ARCH[ffmpeg]="amd64"
+PKG_VERSION_CODENAME[ffmpeg]="$OS_CODENAME"
+PKG_BRANCH[ffmpeg]="main"
+PKG_DEB_SRC[ffmpeg]="true"
+PKG_REPO_BASE_URL[ffmpeg]="https://ppa.launchpadcontent.net/ubuntuhandbook1/ffmpeg6/ubuntu"
+
+# Cubic
+PKG_FORMAL_NAME[cubic]="cubic"
+PKG_GPG_KEY_URL[cubic]="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xB7579F80E494ED3406A59DF9081525E2B4F1283B"
+PKG_ARCH[cubic]="amd64"
+PKG_VERSION_CODENAME[cubic]="$OS_CODENAME"
+PKG_BRANCH[cubic]="main"
+PKG_DEB_SRC[cubic]="true"
+PKG_REPO_BASE_URL[cubic]="https://ppa.launchpadcontent.net/cubic-wizard/release/ubuntu"
+
+# Remmina
+PKG_FORMAL_NAME[remmina]="remmina"
+PKG_GPG_KEY_URL[remmina]="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x04E38CE134B239B9F38F82EE8A993C2521C5F0BA"
+PKG_ARCH[remmina]="amd64"
+PKG_VERSION_CODENAME[remmina]="$OS_CODENAME"
+PKG_BRANCH[remmina]="main"
+PKG_DEB_SRC[remmina]="true"
+PKG_REPO_BASE_URL[remmina]="https://ppa.launchpadcontent.net/remmina-ppa-team/remmina-next/ubuntu"
+
+# VLC
+PKG_FORMAL_NAME[vlc]="vlc"
+PKG_GPG_KEY_URL[vlc]="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xF4E48910A020E77056748B745738AE8480447DDF"
+PKG_ARCH[vlc]="amd64"
+PKG_VERSION_CODENAME[vlc]="$OS_CODENAME"
+PKG_BRANCH[vlc]="main"
+PKG_DEB_SRC[vlc]="true"
+PKG_REPO_BASE_URL[vlc]="https://ppa.launchpadcontent.net/ubuntuhandbook1/vlc/ubuntu"
+
+# Linux Wifi Hotspot
+PKG_FORMAL_NAME[wifi-hotspot]="linux-wifi-hotspot"
+PKG_GPG_KEY_URL[wifi-hotspot]="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x0E49A504B40CA53C5D8C72B487B8838C5E2893D3"
+PKG_ARCH[wifi-hotspot]="amd64"
+PKG_VERSION_CODENAME[wifi-hotspot]="$OS_CODENAME"
+PKG_BRANCH[wifi-hotspot]="main"
+PKG_DEB_SRC[wifi-hotspot]="true"
+PKG_REPO_BASE_URL[wifi-hotspot]="https://ppa.launchpadcontent.net/lakinduakash/lwh/ubuntu"
+
+# Android Studio
+PKG_FORMAL_NAME[android-studio]="android-studio"
+PKG_GPG_KEY_URL[android-studio]="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xB0B65046D9826D045FAFBA324EE97B1881326419"
+PKG_ARCH[android-studio]="amd64"
+PKG_VERSION_CODENAME[android-studio]="$OS_CODENAME"
+PKG_BRANCH[android-studio]="main"
+PKG_DEB_SRC[android-studio]="true"
+PKG_REPO_BASE_URL[android-studio]="https://ppa.launchpadcontent.net/maarten-fonville/android-studio/ubuntu"
+
 # Function to get a global variable
 # Usage: global_vars key
 # Returns: The value of the key or empty if not found
@@ -163,10 +271,28 @@ global_vars() {
     # Handle arrays
     case "$key" in
         "users")
-            echo "${LAB_USERS[@]}"
+            # Get all users who are not superusers
+            local regular_users=()
+            for user in "${!USER_FULLNAME[@]}"; do
+                if [ "${USER_IS_SUPERUSER[$user]}" = "false" ]; then
+                    regular_users+=("$user")
+                fi
+            done
+            echo "${regular_users[@]}"
             ;;
         "super_users")
-            echo "${LAB_SUPER_USERS[@]}"
+            # Get all users who are superusers
+            local super_users=()
+            for user in "${!USER_FULLNAME[@]}"; do
+                if [ "${USER_IS_SUPERUSER[$user]}" = "true" ]; then
+                    super_users+=("$user")
+                fi
+            done
+            echo "${super_users[@]}"
+            ;;
+        "all_users")
+            # Get all users (both regular and super)
+            echo "${!USER_FULLNAME[@]}"
             ;;
         "package_repos")
             echo "${!PKG_FORMAL_NAME[@]}"
@@ -213,13 +339,15 @@ set_global_var() {
     return 0
 }
 
+
 # Export functions for use in other scripts
 export -f global_vars
 export -f set_global_var
 
 # Export arrays and maps
-export LAB_USERS
-export LAB_SUPER_USERS
+export USER_FULLNAME
+export USER_JOIN_YEAR
+export USER_IS_SUPERUSER
 export PKG_FORMAL_NAME
 export PKG_GPG_KEY_URL
 export PKG_ARCH

@@ -12,13 +12,13 @@ source "$SCRIPT_DIR/globals.sh"
 log_debug "Loading file operations implementation" "file_ops"
 
 # Function to add lines to a file if they are missing
-# Usage: check_and_add_lines filename title_line content_line1 content_line2 ...
+# Usage: check_and_add_lines filename content_line1 content_line2 ...
 # Returns: 0 on success, 1 on failure
 check_and_add_lines() {
     local filename="$1"
-    local title_line="$2"
-    shift 2
+    shift 1
     local content=("$@")
+    local title_line="${content[0]}"  # First line is used as the section locator
     
     log_debug "Checking and adding lines to file: $filename" "check_and_add_lines"
 
@@ -59,8 +59,10 @@ check_and_add_lines() {
     done
 
     # Insert content lines after the title line if they are missing
+    # Skip the first element (title line) when adding content
     local line_found line_insert_index=$((title_index + 1))
-    for content_line in "${content[@]}"; do
+    for ((i=1; i<${#content[@]}; i++)); do
+        local content_line="${content[$i]}"
         line_found=false
         for existing_line in "${lines[@]:$line_insert_index}"; do
             if [[ "$existing_line" == "$content_line" ]]; then
@@ -87,13 +89,13 @@ check_and_add_lines() {
 }
 
 # Function to remove lines from a file if they match the specified content
-# Usage: check_and_remove_lines filename title_line content_line1 content_line2 ...
+# Usage: check_and_remove_lines filename content_line1 content_line2 ...
 # Returns: 0 on success, 1 on failure
 check_and_remove_lines() {
     local filename="$1"
-    local title_line="$2"
-    shift 2
+    shift 1
     local content=("$@")
+    local title_line="${content[0]}"  # First line is used as the section locator
     
     log_debug "Checking and removing lines from file: $filename" "check_and_remove_lines"
 
@@ -138,8 +140,9 @@ check_and_remove_lines() {
     local skip_lines=()
 
     # Create the skip_lines array containing all content lines to remove
-    for content_line in "${content[@]}"; do
-        skip_lines+=("$content_line")
+    # Start from index 1 to skip the title line
+    for ((i=1; i<${#content[@]}; i++)); do
+        skip_lines+=("${content[$i]}")
     done
 
     # Loop through all lines, adding to new_lines unless it's a line to remove
@@ -165,16 +168,19 @@ check_and_remove_lines() {
         fi
     done
 
-    # When we're removing content without a specific list or when the title line should be removed
     # Check if we should also remove the title line
-    if [ $removed_count -gt 0 ] || [ ${#content[@]} -eq 0 ]; then
-        # If no specific content lines were provided, remove the title line directly
-        if [ ${#content[@]} -eq 0 ]; then
+    # 1. If all content was removed and only title remains
+    # 2. If explicitly requested by providing only the title
+    # 3. If the title is followed by another title or empty
+    if [ $removed_count -gt 0 ] || [ ${#content[@]} -eq 1 ]; then
+        # If only the title line was provided, remove it directly
+        if [ ${#content[@]} -eq 1 ]; then
             log_debug "Removing title line as requested: $title_line" "check_and_remove_lines"
             new_lines=("${new_lines[@]:0:$title_index}" "${new_lines[@]:$((title_index + 1))}")
             ((removed_count++))
         else
-            # Check if title line is now followed by only whitespace or another title line
+            # Check if the title is now followed by only whitespace or another title
+            # or if it's the last line
             if [ ${#new_lines[@]} -gt $((title_index + 1)) ]; then
                 # Check if next line is empty or a header/title (starts with # or [)
                 local next_line="${new_lines[$((title_index + 1))]}"
@@ -207,17 +213,18 @@ check_and_remove_lines() {
 }
 
 # Function to safely modify a file with user confirmation (adding content)
-# Usage: safe_insert usage filename title_line content_line1 content_line2 ...
+# Usage: safe_insert usage filename content
 # Returns: 0 on success, 1 on failure
 safe_insert() {
     local usage="$1"      # Describe what the modification is for
     local filename="$2"   # Path to the file to modify
-    local title_line="$3" # Title line (section header)
-    shift 3
-    local content=("$@") # Content lines to add
+    local content_block="$3" # Content block to add
     
     log_debug "Safely inserting content into file: $filename for $usage" "safe_insert"
 
+    # Split the content block into an array of lines
+    mapfile -t content_lines <<< "$content_block"
+    
     # Use /tmp directory for temporary file operations
     local base_filename=$(basename "$filename")
     local temp_file="/tmp/${base_filename}.tmp"
@@ -234,7 +241,7 @@ safe_insert() {
     
     # Perform the add lines operation on the temporary file
     log_debug "Adding lines to temporary file" "safe_insert"
-    check_and_add_lines "$temp_file" "$title_line" "${content[@]}"
+    check_and_add_lines "$temp_file" "${content_lines[@]}"
 
     # Compare the original file with the modified temporary file
     log_debug "Comparing changes" "safe_insert"
@@ -298,16 +305,17 @@ safe_insert() {
 }
 
 # Function to safely modify a file with user confirmation (removing content)
-# Usage: safe_remove usage filename title_line content_line1 content_line2 ...
+# Usage: safe_remove usage filename content
 # Returns: 0 on success, 1 on failure
 safe_remove() {
     local usage="$1"      # Describe what the modification is for
     local filename="$2"   # Path to the file to modify
-    local title_line="$3" # Title line (section header)
-    shift 3
-    local content=("$@") # Content lines to remove
+    local content_block="$3" # Content block to remove
     
     log_debug "Safely removing content from file: $filename for $usage" "safe_remove"
+
+    # Split the content block into an array of lines
+    mapfile -t content_lines <<< "$content_block"
 
     # Check if file exists
     if [[ ! -f "$filename" ]]; then
@@ -325,7 +333,7 @@ safe_remove() {
     
     # Perform the remove lines operation on the temporary file
     log_debug "Removing lines from temporary file" "safe_remove"
-    check_and_remove_lines "$temp_file" "$title_line" "${content[@]}"
+    check_and_remove_lines "$temp_file" "${content_lines[@]}"
 
     # Compare the original file with the modified temporary file
     log_debug "Comparing changes" "safe_remove"

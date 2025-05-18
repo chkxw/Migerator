@@ -59,38 +59,63 @@ confirm() {
     done
 }
 
-# Function to create a symbolic link if it doesn't exist
-# Usage: create_symlink source target
+# Function to create a symbolic link, replacing any existing file or symlink
+# Usage: create_symlink source target [force]
 # Returns: 0 on success, 1 on failure
 create_symlink() {
     local source="$1"
     local target="$2"
+    local force="${3:-false}"
 
     log_debug "Attempting to create symlink: $target -> $source" "create_symlink"
 
+    # Check if the source exists
     if [ ! -e "$source" ]; then
         log_error "Source '$source' does not exist." "create_symlink"
         return 1
     fi
 
-    if [ -e "$target" ]; then
-        if [ -L "$target" ]; then
-            local existing_target=$(readlink "$target")
-            if [ "$existing_target" != "$source" ]; then
-                log_warning "$target already exists and points to a different location: $existing_target" "create_symlink"
+    # Check if the target already exists
+    if [ -e "$target" ] || [ -L "$target" ]; then
+        if [ "$force" = "true" ] || [ "$force" = "force" ]; then
+            # Force mode: remove existing target
+            log_info "Removing existing target: $target" "create_symlink"
+            rm -rf "$target"
+            if [ $? -ne 0 ]; then
+                log_error "Failed to remove existing target: $target" "create_symlink"
                 return 1
-            else
-                log_info "Symbolic link already exists: $target -> $source" "create_symlink"
+            fi
+        elif [ -L "$target" ]; then
+            # If it's a symlink, check if it already points to our source
+            local existing_target=$(readlink "$target")
+            if [ "$existing_target" = "$source" ]; then
+                log_info "Symbolic link already points to correct location: $target -> $source" "create_symlink"
                 return 0
+            else
+                log_warning "Target $target exists and points to a different location: $existing_target" "create_symlink"
+                return 1
             fi
         else
-            log_warning "$target already exists and is not a symbolic link." "create_symlink"
+            # Target exists but is not a symlink and force is not set
+            log_warning "Target $target already exists and is not a symbolic link" "create_symlink"
             return 1
         fi
     fi
 
+    # Create parent directory if it doesn't exist
+    local parent_dir=$(dirname "$target")
+    if [ ! -d "$parent_dir" ]; then
+        log_debug "Creating parent directory: $parent_dir" "create_symlink"
+        mkdir -p "$parent_dir"
+        if [ $? -ne 0 ]; then
+            log_error "Failed to create parent directory: $parent_dir" "create_symlink"
+            return 1
+        fi
+    fi
+
+    # Create the symlink
     ln -s "$source" "$target"
-    if [ "$?" -eq 0 ]; then
+    if [ $? -eq 0 ]; then
         log_info "Symbolic link created: $target -> $source" "create_symlink"
         return 0
     else

@@ -188,6 +188,24 @@ Each Level 1 abstraction has a dedicated test script covering all functionality:
      - URL normalization
      - Architecture detection
 
+3. **Power Management Tests**
+   - `test_power.sh`: Tests power settings configuration
+   - Key test cases:
+     - Content generation functions
+     - Command line argument parsing
+     - DConf settings application
+     - DConf settings removal
+     - Complete setup and teardown
+
+4. **Proxy Management Tests**
+   - `test_proxy.sh`: Tests proxy settings configuration
+   - Key test cases:
+     - Multiple content generation functions for different services
+     - Command line argument parsing
+     - Configuration for individual services (env, apt, git, dconf)
+     - Configuration for multiple services simultaneously
+     - Complete configuration removal
+
 ## Implemented and Pending Functionality
 
 ### Implemented Level 1 Abstractions
@@ -273,7 +291,283 @@ All functionality should be able to be redo!!!
 
 0. Migerate more package options from the old setup script (Now only a few of them exist in globals.sh's # Package repository information)
 1. Check+Test the implementation of adding new lab users / remove lab users
-   Ok, I find a serious problem here, Now, we just have a list of user, but actually, there should be some other fields about the user, like their year that they join this Lab, Let's first assume everyone join 2024. And maybe we need to have more fields in the future, so I think the data strcture should be more like the one we have for # Package repository information, that we refer by one's full name 
+   Ok, I find a serious problem here, people's account name involves the year they join this lab, but, now we just use the year we create the account. It's ok for new users, but it's not ok for old user when creating their account on a new computer.  Now, we just have a list of user, but actually, there should be some other fields about the user, like their year that they join this Lab, Let's first assume everyone join 2024. And maybe we need to have more fields in the future, so I think the data strcture should be more like the one we have for # Package repository information, that we refer by one's full name. 
 2. Complete+Test remaining Level 2 modules (extend existing modules for proxy, conda, power)
 3. Develop the CLI interface for command dispatching and parameter handling
 5. Integrate all components into a cohesive single-file deliverable
+
+## Current progress
+I'm on step 2 but I notice a series problem, to enable undo all safe_insert, I need to geneerate exact content to pass into safe_remove, so actually the old way of hard coding the content before insert function doesn't work. We need a uniform way to provide just enough information to generate content to pass into safe_insert and safe_remove. 
+
+## Important
+I change the API of safe_insert and safe_remove to accept only content instead of title + content, and will split it into title line and other content lines in the function itself, but haven't change all the place that uses this API. This change is intend to make the API easier so that we can directly return a bunch of lines for the content generating function.
+
+Each module should: 
+Use new API, for content need to pass into safe_insert, generate with a content generating function
+have a standard arg parser inside its entry function. This entry function should have names <module_name>_main. The only work this top level function should do is parse arg and call other functions
+Each module should not expose all its functios, just expose the main function + other top level function (function that main function calls), don't export util functions
+
+## Module Implementation Guidelines
+
+After rewriting several modules to comply with the new API requirements, here is a comprehensive guide for implementing modules in our project:
+
+### 1. Content Generation Functions
+
+Each module must include content generation functions that:
+
+- Generate complete content blocks as strings, not arrays
+- Include both the title line and content lines in a single return
+- Follow consistent naming: `module_generate_*` (e.g., `ssh_server_generate_config`)
+- Accept parameters needed to customize the content (e.g., port numbers, usernames)
+- Handle edge cases with proper validation and error logging
+- Use heredoc syntax for multi-line string generation
+
+Example:
+```bash
+# Function to generate configuration content
+generate_samba_share_config() {
+    local username="$1"
+    log_debug "Generating configuration for: $username" "$MODULE_NAME"
+    
+    # Validate inputs
+    if [ -z "$username" ]; then
+        log_error "Missing required username parameter" "$MODULE_NAME"
+        return 1
+    fi
+    
+    # Generate complete content block (title + content)
+    local content="[${username}-share]
+   path = /home/${username}/shared
+   available = yes
+   valid users = ${username}
+   read only = no
+   browsable = yes"
+
+    echo "$content"
+}
+```
+
+### 2. Main Function Structure
+
+Each module must have a single main function that:
+
+- Follows naming convention: `module_name_main` (e.g., `lab_users_main`)
+- Is the only function exported from the module
+- Implements a standardized argument parser
+- Calls appropriate internal functions based on arguments
+- Provides clear help/usage information
+- Returns standardized exit codes
+
+Example:
+```bash
+module_main() {
+    log_debug "Module main function called with args: $@" "$MODULE_NAME"
+    
+    # Default values
+    local setup=false
+    local remove=false
+    local force=false
+    local show_help=false
+    
+    # Process arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            setup)
+                setup=true
+                shift
+                ;;
+            remove)
+                remove=true
+                shift
+                ;;
+            --force)
+                force=true
+                shift
+                ;;
+            --help|-h)
+                show_help=true
+                shift
+                ;;
+            *)
+                log_error "Unknown argument: $1" "$MODULE_NAME"
+                show_help=true
+                shift
+                ;;
+        esac
+    done
+    
+    # Show help
+    if [ "$show_help" = "true" ]; then
+        echo "Usage: module_main [command] [options]"
+        echo ""
+        echo "Commands:"
+        echo "  setup                  Setup the module functionality"
+        echo "  remove [--force]       Remove the module functionality"
+        echo ""
+        echo "Options:"
+        echo "  --force                Force operation without confirmation"
+        echo "  --help, -h             Show this help message"
+        return 0
+    fi
+    
+    # Execute commands
+    if [ "$setup" = "true" ]; then
+        setup_function
+        return $?
+    elif [ "$remove" = "true" ]; then
+        if [ "$force" = "true" ]; then
+            remove_function "force"
+        else
+            remove_function
+        fi
+        return $?
+    else
+        log_error "No command specified" "$MODULE_NAME"
+        return 1
+    fi
+}
+
+# Export only the main function
+export -f module_main
+```
+
+### 3. File Operations with safe_insert and safe_remove
+
+When using the file operations functions:
+
+- Always use content generation functions to create content blocks
+- Pass the generated content directly to `safe_insert` or `safe_remove`
+- Use the same content generation for both insertion and removal
+- Provide descriptive usage messages for the operations
+- Handle the return values properly with error checking
+
+Example:
+```bash
+# Setup function using content generation
+setup_function() {
+    # Generate content using the content generation function
+    local config_content=$(generate_config_content "param1" "param2")
+    
+    if [ -z "$config_content" ]; then
+        log_error "Failed to generate configuration content" "$MODULE_NAME"
+        return 1
+    fi
+    
+    # Use safe_insert with the generated content
+    Sudo safe_insert "Setting up module configuration" "/etc/config/file.conf" "$config_content"
+    
+    if [ $? -ne 0 ]; then
+        log_error "Failed to insert configuration" "$MODULE_NAME"
+        return 1
+    fi
+    
+    log_info "Configuration successfully applied" "$MODULE_NAME"
+    return 0
+}
+
+# Remove function using the same content generation
+remove_function() {
+    local force="$1"
+    
+    # Generate the same content for removal
+    local config_content=$(generate_config_content "param1" "param2")
+    
+    if [ -z "$config_content" ]; then
+        log_error "Failed to generate configuration content for removal" "$MODULE_NAME"
+        return 1
+    fi
+    
+    # Use safe_remove with the same generated content
+    Sudo safe_remove "Removing module configuration" "/etc/config/file.conf" "$config_content"
+    
+    if [ $? -ne 0 ]; then
+        log_error "Failed to remove configuration" "$MODULE_NAME"
+        return 1
+    fi
+    
+    log_info "Configuration successfully removed" "$MODULE_NAME"
+    return 0
+}
+```
+
+### 4. Module Metadata and Documentation
+
+Each module should include:
+
+- Clear module info variables (name, description, version)
+- Comprehensive function documentation with usage examples
+- A MODULE_COMMANDS array for the CLI dispatcher
+- Consistent log messages with appropriate module identifier
+
+Example:
+```bash
+# Module info
+MODULE_NAME="module_name"
+MODULE_DESCRIPTION="Description of what this module does"
+MODULE_VERSION="1.0.0"
+
+# Module metadata for CLI dispatcher
+MODULE_COMMANDS=(
+    "module_main setup:Setup the module functionality"
+    "module_main remove:Remove the module functionality (args: [--force])"
+)
+export MODULE_COMMANDS
+```
+
+### 5. Function Visibility (Export Control)
+
+Modules should:
+
+- Export ONLY the main function
+- Keep all helper functions, content generation functions internal
+- Export the MODULE_COMMANDS array for the CLI system
+- Not pollute the global namespace with utility functions
+
+Example:
+```bash
+# Export only the main function and metadata
+export -f module_main
+export MODULE_COMMANDS
+
+# Do NOT export internal functions
+# export -f internal_function  # WRONG
+```
+
+### 6. Testing
+
+Each module should have a corresponding test script that:
+
+- Tests both the main function and internal functions
+- Verifies content generation produces expected output
+- Tests both setup and removal operations
+- Tests argument parsing in the main function
+- Uses the MODULE_NAME constant for test reporting
+- Cleans up any changes made during testing
+
+Example test pattern:
+```bash
+# Test content generation
+content=$(generate_config_content "param1" "param2")
+if [[ "$content" == *"expected_line"* ]]; then
+    report_result 0 "Content generation produces expected output"
+else
+    report_result 1 "Content generation failed to produce expected output"
+fi
+
+# Test main function
+module_main setup
+if [ $? -eq 0 ] && [ -f "/path/to/expected/file" ]; then
+    report_result 0 "Setup operation completed successfully"
+else
+    report_result 1 "Setup operation failed"
+fi
+
+module_main remove --force
+if [ $? -eq 0 ] && [ ! -f "/path/to/expected/file" ]; then
+    report_result 0 "Remove operation completed successfully"
+else
+    report_result 1 "Remove operation failed"
+fi
+```
+
+Following these guidelines will ensure consistency across all modules, facilitate maintenance, and enable the comprehensive reversibility of all configuration changes made by the setup script.

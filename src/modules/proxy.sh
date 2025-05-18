@@ -19,12 +19,410 @@ MODULE_VERSION="1.0.0"
 
 log_debug "Loading proxy module" "$MODULE_NAME"
 
-# Function to configure proxy settings in environment for both login and non-login shells
-setup_proxy_env() {
-    log_debug "Setting up proxy environment variables" "$MODULE_NAME"
+# Function to generate proxy environment variables content
+# Args: $1 - host, $2 - port
+# Returns: configuration content as a string
+proxy_generate_env_content() {
+    local host="$1"
+    local port="$2"
     
+    local http_proxy="http://${host}:${port}/"
+    local https_proxy="http://${host}:${port}/"
+    local ftp_proxy="ftp://${host}:${port}/"
+    
+    local content="# Proxy settings for WISC CS Building
+export http_proxy=\"${http_proxy}\"
+export https_proxy=\"${https_proxy}\"
+export ftp_proxy=\"${ftp_proxy}\"
+export no_proxy=\"localhost,127.0.0.1,::1\"
+#For curl
+export HTTP_PROXY=\"${http_proxy}\"
+export HTTPS_PROXY=\"${https_proxy}\"
+export FTP_PROXY=\"${ftp_proxy}\"
+export NO_PROXY=\"localhost,127.0.0.1,::1\""
+
+    echo "$content"
+}
+
+# Function to generate apt proxy configuration content
+# Args: $1 - host, $2 - port
+# Returns: configuration content as a string
+proxy_generate_apt_content() {
+    local host="$1"
+    local port="$2"
+    
+    local http_proxy="http://${host}:${port}"
+    local https_proxy="http://${host}:${port}"
+    local ftp_proxy="ftp://${host}:${port}"
+    
+    local content="# Proxy settings for WISC CS Building
+Acquire::http::Proxy \"${http_proxy}\";
+Acquire::https::Proxy \"${https_proxy}\";
+Acquire::ftp::Proxy \"${ftp_proxy}\";"
+
+    echo "$content"
+}
+
+# Function to generate git proxy configuration content
+# Args: $1 - host, $2 - port
+# Returns: configuration content as a string
+proxy_generate_git_content() {
+    local host="$1"
+    local port="$2"
+    
+    local content="[https]
+    proxy = http://${host}:${port}
+[http]
+    proxy = http://${host}:${port}"
+
+    echo "$content"
+}
+
+# Function to generate SSH proxy configuration for GitHub/GitLab
+# Args: $1 - host, $2 - port
+# Returns: configuration content as a string
+proxy_generate_ssh_github_content() {
+    local host="$1"
+    local port="$2"
+    
+    local content="# Proxy settings to use SSH over HTTPS to access GitHub
+Host github.com
+    User git
+    Port 443
+    Hostname ssh.github.com
+    IdentitiesOnly yes
+    TCPKeepAlive yes
+    ProxyCommand corkscrew ${host} ${port} %h %p
+Host ssh.github.com
+    User git
+    Port 443
+    Hostname ssh.github.com
+    IdentitiesOnly yes
+    TCPKeepAlive yes
+    ProxyCommand corkscrew ${host} ${port} %h %p"
+
+    echo "$content"
+}
+
+# Function to generate SSH proxy configuration for Gitee
+# Args: $1 - host, $2 - port
+# Returns: configuration content as a string
+proxy_generate_ssh_gitee_content() {
+    local host="$1"
+    local port="$2"
+    
+    local content="# Proxy settings to use SSH over HTTPS to access Gitee
+Host gitee.com
+    User git
+    Port 443
+    Hostname ssh.gitee.com
+    IdentitiesOnly yes
+    TCPKeepAlive yes
+    ProxyCommand corkscrew ${host} ${port} %h %p
+Host ssh.gitee.com
+    User git
+    Port 443
+    Hostname ssh.gitee.com
+    IdentitiesOnly yes
+    TCPKeepAlive yes
+    ProxyCommand corkscrew ${host} ${port} %h %p"
+
+    echo "$content"
+}
+
+# Function to generate dconf proxy configuration content
+# Args: $1 - host, $2 - port
+# Returns: configuration content as a string
+proxy_generate_dconf_content() {
+    local host="$1"
+    local port="$2"
+    
+    local content="[system/proxy]
+mode='manual'
+[system/proxy/http]
+host='${host}'
+port=${port}
+[system/proxy/https]
+host='${host}'
+port=${port}
+[system/proxy/ftp]
+host='${host}'
+port=${port}"
+
+    echo "$content"
+}
+
+# Function to generate dconf profile content
+# Returns: configuration content as a string
+proxy_generate_dconf_profile_content() {
+    local content="user-db:user
+system-db:local"
+
+    echo "$content"
+}
+
+# Function to setup proxy for a single system service
+# Args: $1 - service name (env, apt, git, ssh, dconf), $2 - host, $3 - port
+# Returns: 0 on success, 1 on failure
+proxy_setup_service() {
+    local service="$1"
+    local host="$2"
+    local port="$3"
+    
+    log_debug "Setting up proxy for $service" "$MODULE_NAME"
+    
+    case "$service" in
+        env)
+            local content=$(proxy_generate_env_content "$host" "$port")
+            local filename="/etc/profile.d/proxy.sh"
+            
+            # Configure proxy for login shells
+            if ! Sudo safe_insert "Login shells proxy" "$filename" "$content"; then
+                log_error "Failed to configure proxy for login shells" "$MODULE_NAME"
+                return 1
+            fi
+            
+            # Configure proxy for non-login shells
+            local bashrc_content="# Proxy settings for WISC CS Building
+source /etc/profile.d/proxy.sh"
+            
+            if ! Sudo safe_insert "Non-login shells proxy" "/etc/bash.bashrc" "$bashrc_content"; then
+                log_error "Failed to configure proxy for non-login shells" "$MODULE_NAME"
+                return 1
+            fi
+            ;;
+            
+        apt)
+            local content=$(proxy_generate_apt_content "$host" "$port")
+            local filename="/etc/apt/apt.conf.d/proxy.conf"
+            
+            if ! Sudo safe_insert "Apt proxy" "$filename" "$content"; then
+                log_error "Failed to configure proxy for APT" "$MODULE_NAME"
+                return 1
+            fi
+            ;;
+            
+        git)
+            local content=$(proxy_generate_git_content "$host" "$port")
+            local filename="/etc/gitconfig"
+            
+            if ! Sudo safe_insert "Configure Git settings" "$filename" "$content"; then
+                log_error "Failed to configure proxy for Git" "$MODULE_NAME"
+                return 1
+            fi
+            ;;
+            
+        ssh)
+            # Check if corkscrew is installed
+            if ! command -v corkscrew &>/dev/null; then
+                log_warning "corkscrew package is not installed, installing now" "$MODULE_NAME"
+                Sudo apt update >/dev/null
+                Sudo apt install -y corkscrew
+                if [ $? -ne 0 ]; then
+                    log_error "Failed to install corkscrew package" "$MODULE_NAME"
+                    return 1
+                fi
+            fi
+            
+            local filename="/etc/ssh/ssh_config"
+            
+            # Configure GitHub.com proxy
+            local github_content=$(proxy_generate_ssh_github_content "$host" "$port")
+            if ! Sudo safe_insert "GitHub.com proxy for SSH access" "$filename" "$github_content"; then
+                log_error "Failed to configure GitHub proxy for SSH" "$MODULE_NAME"
+                return 1
+            fi
+            
+            # Configure Gitee.com proxy
+            local gitee_content=$(proxy_generate_ssh_gitee_content "$host" "$port")
+            if ! Sudo safe_insert "Gitee.com proxy for SSH access" "$filename" "$gitee_content"; then
+                log_error "Failed to configure Gitee proxy for SSH" "$MODULE_NAME"
+                return 1
+            fi
+            ;;
+            
+        dconf)
+            # Ensure dconf directories exist
+            Sudo ensure_directory "/etc/dconf/profile" "0755"
+            Sudo ensure_directory "/etc/dconf/db/local.d" "0755"
+            
+            # Create dconf profile
+            local profile_content=$(proxy_generate_dconf_profile_content)
+            if ! Sudo safe_insert "Create dconf profile for system-wide settings" "/etc/dconf/profile/user" "$profile_content"; then
+                log_error "Failed to configure dconf profile" "$MODULE_NAME"
+                return 1
+            fi
+            
+            # Configure proxy settings in dconf
+            local content=$(proxy_generate_dconf_content "$host" "$port")
+            if ! Sudo safe_insert "System proxy settings in dconf" "/etc/dconf/db/local.d/00-proxy" "$content"; then
+                log_error "Failed to configure proxy in dconf" "$MODULE_NAME"
+                return 1
+            fi
+            
+            # Update dconf database
+            Sudo dconf update
+            ;;
+            
+        *)
+            log_error "Unknown service: $service" "$MODULE_NAME"
+            return 1
+            ;;
+    esac
+    
+    log_info "Proxy configured for $service" "$MODULE_NAME"
+    return 0
+}
+
+# Function to remove proxy configuration for a single service
+# Args: $1 - service name (env, apt, git, ssh, dconf), $2 - host, $3 - port
+# Returns: 0 on success, 1 on failure
+proxy_remove_service() {
+    local service="$1"
+    local host="$2"
+    local port="$3"
+    
+    log_debug "Removing proxy for $service" "$MODULE_NAME"
+    
+    case "$service" in
+        env)
+            local content=$(proxy_generate_env_content "$host" "$port")
+            local filename="/etc/profile.d/proxy.sh"
+            
+            # Remove proxy for login shells
+            if ! Sudo safe_remove "Login shells proxy" "$filename" "$content"; then
+                log_error "Failed to remove proxy for login shells" "$MODULE_NAME"
+                return 1
+            fi
+            
+            # Remove proxy from non-login shells
+            local bashrc_content="# Proxy settings for WISC CS Building
+source /etc/profile.d/proxy.sh"
+            
+            if ! Sudo safe_remove "Non-login shells proxy" "/etc/bash.bashrc" "$bashrc_content"; then
+                log_error "Failed to remove proxy for non-login shells" "$MODULE_NAME"
+                return 1
+            fi
+            ;;
+            
+        apt)
+            local content=$(proxy_generate_apt_content "$host" "$port")
+            local filename="/etc/apt/apt.conf.d/proxy.conf"
+            
+            if ! Sudo safe_remove "Apt proxy" "$filename" "$content"; then
+                log_error "Failed to remove proxy for APT" "$MODULE_NAME"
+                return 1
+            fi
+            ;;
+            
+        git)
+            local content=$(proxy_generate_git_content "$host" "$port")
+            local filename="/etc/gitconfig"
+            
+            if ! Sudo safe_remove "Configure Git settings" "$filename" "$content"; then
+                log_error "Failed to remove proxy for Git" "$MODULE_NAME"
+                return 1
+            fi
+            ;;
+            
+        ssh)
+            local filename="/etc/ssh/ssh_config"
+            
+            # Remove GitHub.com proxy
+            local github_content=$(proxy_generate_ssh_github_content "$host" "$port")
+            if ! Sudo safe_remove "GitHub.com proxy for SSH access" "$filename" "$github_content"; then
+                log_error "Failed to remove GitHub proxy for SSH" "$MODULE_NAME"
+                return 1
+            fi
+            
+            # Remove Gitee.com proxy
+            local gitee_content=$(proxy_generate_ssh_gitee_content "$host" "$port")
+            if ! Sudo safe_remove "Gitee.com proxy for SSH access" "$filename" "$gitee_content"; then
+                log_error "Failed to remove Gitee proxy for SSH" "$MODULE_NAME"
+                return 1
+            fi
+            ;;
+            
+        dconf)
+            # Remove dconf proxy settings
+            local content=$(proxy_generate_dconf_content "$host" "$port")
+            if ! Sudo safe_remove "System proxy settings in dconf" "/etc/dconf/db/local.d/00-proxy" "$content"; then
+                log_error "Failed to remove proxy from dconf" "$MODULE_NAME"
+                return 1
+            fi
+            
+            # Update dconf database
+            Sudo dconf update
+            ;;
+            
+        *)
+            log_error "Unknown service: $service" "$MODULE_NAME"
+            return 1
+            ;;
+    esac
+    
+    log_info "Proxy removed for $service" "$MODULE_NAME"
+    return 0
+}
+
+# Main function for the proxy module
+# Usage: proxy_main [options]
+# Options:
+#   --host HOST       Set proxy host
+#   --port PORT       Set proxy port
+#   --services SRVS   Comma-separated list of services to configure (default: all)
+#   --remove          Remove proxy configuration instead of adding it
+#   --help            Display this help message
+# Returns: 0 on success, 1 on failure
+proxy_main() {
+    log_debug "Proxy module main function called with args: $@" "$MODULE_NAME"
+    
+    # Default values
     local host="${PROXY_CONFIG[host]}"
     local port="${PROXY_CONFIG[port]}"
+    local services="env,apt,git,ssh,dconf"
+    local remove=false
+    
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --host)
+                host="$2"
+                shift 2
+                ;;
+            --port)
+                port="$2"
+                shift 2
+                ;;
+            --services)
+                services="$2"
+                shift 2
+                ;;
+            --remove)
+                remove=true
+                shift
+                ;;
+            --help)
+                # Display help message
+                cat <<-EOF
+Usage: proxy_main [options]
+Options:
+  --host HOST       Set proxy host (default: ${PROXY_CONFIG[host]})
+  --port PORT       Set proxy port (default: ${PROXY_CONFIG[port]})
+  --services SRVS   Comma-separated list of services to configure
+                     Available services: env,apt,git,ssh,dconf
+                     Default: all
+  --remove          Remove proxy configuration instead of adding it
+  --help            Display this help message
+EOF
+                return 0
+                ;;
+            *)
+                log_error "Unknown option: $1" "$MODULE_NAME"
+                return 1
+                ;;
+        esac
+    done
     
     # Check if proxy settings are valid
     if [ -z "$host" ] || [ -z "$port" ]; then
@@ -32,256 +430,77 @@ setup_proxy_env() {
         return 1
     fi
     
-    # Format the proxy URLs
-    local http_proxy="http://${host}:${port}/"
-    local https_proxy="http://${host}:${port}/"
-    local ftp_proxy="ftp://${host}:${port}/"
-    
-    log_info "Configuring proxy settings:" "$MODULE_NAME"
-    log_info "  HTTP_PROXY: $http_proxy" "$MODULE_NAME"
-    log_info "  HTTPS_PROXY: $https_proxy" "$MODULE_NAME"
-    log_info "  FTP_PROXY: $ftp_proxy" "$MODULE_NAME"
+    # Log proxy settings
+    log_info "Using proxy settings:" "$MODULE_NAME"
+    log_info "  Host: $host" "$MODULE_NAME"
+    log_info "  Port: $port" "$MODULE_NAME"
+    log_info "  Services: $services" "$MODULE_NAME"
     
     # Confirm proxy settings if not in auto-confirm mode
     if [ "${SCRIPT_CONFIG[confirm_all]}" != "true" ]; then
-        if ! confirm "Are these proxy settings correct?"; then
-            log_warning "Proxy setup cancelled by user" "$MODULE_NAME"
-            return 1
+        if $remove; then
+            if ! confirm "Remove proxy configuration with these settings?"; then
+                log_warning "Proxy removal cancelled by user" "$MODULE_NAME"
+                return 1
+            fi
+        else
+            if ! confirm "Configure proxy with these settings?"; then
+                log_warning "Proxy setup cancelled by user" "$MODULE_NAME"
+                return 1
+            fi
         fi
     fi
     
-    # Configure proxy for login shells
-    local filename="/etc/profile.d/proxy.sh"
-    local title_line="# Proxy settings for WISC CS Building"
-    local content=(
-        "export http_proxy=\"${http_proxy}\""
-        "export https_proxy=\"${https_proxy}\""
-        "export ftp_proxy=\"${ftp_proxy}\""
-        "export no_proxy=\"localhost,127.0.0.1,::1\""
-        "#For curl"
-        "export HTTP_PROXY=\"${http_proxy}\""
-        "export HTTPS_PROXY=\"${https_proxy}\""
-        "export FTP_PROXY=\"${ftp_proxy}\""
-        "export NO_PROXY=\"localhost,127.0.0.1,::1\""
-    )
+    # Convert services string to array
+    IFS=',' read -ra service_array <<< "$services"
     
-    Sudo safe_insert "Login shells proxy" "$filename" "$title_line" "${content[@]}"
-    
-    # Configure proxy for non-login shells
-    filename="/etc/bash.bashrc"
-    title_line="# Proxy settings for WISC CS Building"
-    content=(
-        "source /etc/profile.d/proxy.sh"
-    )
-    
-    Sudo safe_insert "Non-login shells proxy" "$filename" "$title_line" "${content[@]}"
-    
-    log_info "Proxy environment variables configured" "$MODULE_NAME"
-    return 0
-}
-
-# Function to configure apt proxy settings
-setup_proxy_apt() {
-    log_debug "Setting up apt proxy settings" "$MODULE_NAME"
-    
-    local host="${PROXY_CONFIG[host]}"
-    local port="${PROXY_CONFIG[port]}"
-    
-    # Format the proxy URLs
-    local http_proxy="http://${host}:${port}"
-    local https_proxy="http://${host}:${port}"
-    local ftp_proxy="ftp://${host}:${port}"
-    
-    # Configure APT proxy
-    local filename="/etc/apt/apt.conf.d/proxy.conf"
-    local title_line="# Proxy settings for WISC CS Building"
-    local content=(
-        "Acquire::http::Proxy \"${http_proxy}\";"
-        "Acquire::https::Proxy \"${https_proxy}\";"
-        "Acquire::ftp::Proxy \"${ftp_proxy}\";"
-    )
-    
-    Sudo safe_insert "Apt proxy" "$filename" "$title_line" "${content[@]}"
-    
-    log_info "APT proxy configured" "$MODULE_NAME"
-    return 0
-}
-
-# Function to configure git proxy settings
-setup_proxy_git() {
-    log_debug "Setting up git proxy settings" "$MODULE_NAME"
-    
-    local host="${PROXY_CONFIG[host]}"
-    local port="${PROXY_CONFIG[port]}"
-    
-    # Configure GIT proxy
-    local filename="/etc/gitconfig"
-    local title_line="[https]"
-    local content=(
-        "    proxy = http://${host}:${port}"
-        "[http]"
-        "    proxy = http://${host}:${port}"
-    )
-    
-    Sudo safe_insert "Configure Git settings" "$filename" "$title_line" "${content[@]}"
-    
-    log_info "Git proxy configured" "$MODULE_NAME"
-    return 0
-}
-
-# Function to configure SSH proxy for GitHub/GitLab access
-setup_proxy_ssh() {
-    log_debug "Setting up SSH proxy for GitHub/GitLab access" "$MODULE_NAME"
-    
-    local host="${PROXY_CONFIG[host]}"
-    local port="${PROXY_CONFIG[port]}"
-    
-    # Check if corkscrew is installed
-    if ! check_package_installed "corkscrew"; then
-        log_warning "corkscrew package is not installed, installing now" "$MODULE_NAME"
-        Sudo apt update >/dev/null
-        Sudo apt install -y corkscrew
-        if [ $? -ne 0 ]; then
-            log_error "Failed to install corkscrew package" "$MODULE_NAME"
-            return 1
+    # Process each service
+    local result=0
+    for service in "${service_array[@]}"; do
+        if $remove; then
+            if ! proxy_remove_service "$service" "$host" "$port"; then
+                log_error "Failed to remove proxy for $service" "$MODULE_NAME"
+                result=1
+            fi
+        else
+            if ! proxy_setup_service "$service" "$host" "$port"; then
+                log_error "Failed to configure proxy for $service" "$MODULE_NAME"
+                result=1
+            fi
         fi
-    fi
+    done
     
-    # Configure GitHub.com proxy for SSH access
-    local filename="/etc/ssh/ssh_config"
-    local title_line="# Proxy settings to use SSH over HTTPS to access GitHub"
-    local content=(
-        "Host github.com"
-        "    User git"
-        "    Port 443"
-        "    Hostname ssh.github.com"
-        "    IdentitiesOnly yes"
-        "    TCPKeepAlive yes"
-        "    ProxyCommand corkscrew ${host} ${port} %h %p"
-        "Host ssh.github.com"
-        "    User git"
-        "    Port 443"
-        "    Hostname ssh.github.com"
-        "    IdentitiesOnly yes"
-        "    TCPKeepAlive yes"
-        "    ProxyCommand corkscrew ${host} ${port} %h %p"
-    )
-    
-    Sudo safe_insert "GitHub.com proxy for SSH access" "$filename" "$title_line" "${content[@]}"
-    
-    # Configure Gitee.com proxy for SSH access
-    title_line="# Proxy settings to use SSH over HTTPS to access Gitee"
-    content=(
-        "Host gitee.com"
-        "    User git"
-        "    Port 443"
-        "    Hostname ssh.gitee.com"
-        "    IdentitiesOnly yes"
-        "    TCPKeepAlive yes"
-        "    ProxyCommand corkscrew ${host} ${port} %h %p"
-        "Host ssh.gitee.com"
-        "    User git"
-        "    Port 443"
-        "    Hostname ssh.gitee.com"
-        "    IdentitiesOnly yes"
-        "    TCPKeepAlive yes"
-        "    ProxyCommand corkscrew ${host} ${port} %h %p"
-    )
-    
-    Sudo safe_insert "Gitee.com proxy for SSH access" "$filename" "$title_line" "${content[@]}"
-    
-    log_info "SSH proxy for Git hosts configured" "$MODULE_NAME"
-    return 0
-}
-
-# Function to configure dconf proxy settings (for GNOME desktop)
-setup_proxy_dconf() {
-    log_debug "Setting up dconf proxy settings" "$MODULE_NAME"
-    
-    local host="${PROXY_CONFIG[host]}"
-    local port="${PROXY_CONFIG[port]}"
-    
-    # Ensure dconf directories exist
-    Sudo ensure_directory "/etc/dconf/profile" "0755"
-    Sudo ensure_directory "/etc/dconf/db/local.d" "0755"
-    
-    # Create dconf profile for system-wide settings if it doesn't exist
-    local filename="/etc/dconf/profile/user"
-    local title_line="user-db:user"
-    local content=(
-        "system-db:local"
-    )
-    
-    Sudo safe_insert "Create dconf profile for system-wide settings" "$filename" "$title_line" "${content[@]}"
-    
-    # Configure proxy settings in dconf
-    filename="/etc/dconf/db/local.d/00-proxy"
-    title_line="[system/proxy]"
-    content=(
-        "mode='manual'"
-        "[system/proxy/http]"
-        "host='${host}'"
-        "port=${port}"
-        "[system/proxy/https]"
-        "host='${host}'"
-        "port=${port}"
-        "[system/proxy/ftp]"
-        "host='${host}'"
-        "port=${port}"
-    )
-    
-    Sudo safe_insert "System proxy settings in dconf" "$filename" "$title_line" "${content[@]}"
-    
-    # Update dconf database
-    Sudo dconf update
-    
-    log_info "Dconf proxy settings configured" "$MODULE_NAME"
-    return 0
-}
-
-# Main function to set up all proxy settings
-setup_proxy() {
-    log_info "Setting up system-wide proxy configuration" "$MODULE_NAME"
-    
-    # Check if proxy is enabled
-    if [ "${PROXY_CONFIG[enabled]}" != "true" ]; then
-        log_warning "Proxy configuration is disabled, skipping setup" "$MODULE_NAME"
-        return 0
-    fi
-    
-    # Set up proxy in various places
-    setup_proxy_env
-    setup_proxy_apt
-    setup_proxy_git
-    setup_proxy_ssh
-    setup_proxy_dconf
-    
-    # Source the proxy settings to apply them immediately
-    if [ -f "/etc/profile.d/proxy.sh" ]; then
+    # Apply environment variables immediately if env service was modified
+    if [[ "$services" == *"env"* ]] && [ -f "/etc/profile.d/proxy.sh" ] && [ "$remove" = false ]; then
         source /etc/profile.d/proxy.sh
         log_info "Proxy settings applied to current session" "$MODULE_NAME"
     fi
     
-    log_info "Proxy setup completed successfully" "$MODULE_NAME"
-    return 0
+    if [ $result -eq 0 ]; then
+        if $remove; then
+            log_info "Proxy configuration removed successfully" "$MODULE_NAME"
+        else
+            log_info "Proxy configuration completed successfully" "$MODULE_NAME"
+        fi
+    else
+        if $remove; then
+            log_error "Proxy configuration removal completed with errors" "$MODULE_NAME"
+        else
+            log_error "Proxy configuration completed with errors" "$MODULE_NAME"
+        fi
+    fi
+    
+    return $result
 }
 
-# Export the main function
-export -f setup_proxy
-export -f setup_proxy_env
-export -f setup_proxy_apt
-export -f setup_proxy_git
-export -f setup_proxy_ssh
-export -f setup_proxy_dconf
+# Export only the main function and necessary functions
+export -f proxy_main
+export -f proxy_setup_service
+export -f proxy_remove_service
 
 # Module metadata
 MODULE_COMMANDS=(
-    "setup_proxy:Setup all proxy settings"
-    "setup_proxy_env:Setup proxy environment variables"
-    "setup_proxy_apt:Setup proxy for APT package manager"
-    "setup_proxy_git:Setup proxy for Git"
-    "setup_proxy_ssh:Setup SSH proxy for GitHub/GitLab access"
-    "setup_proxy_dconf:Setup proxy in dconf (GNOME desktop)"
+    "proxy_main:Configure system-wide proxy settings"
 )
 export MODULE_COMMANDS
 

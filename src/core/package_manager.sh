@@ -73,7 +73,21 @@ parse_package_repo() {
     fi
     
     # 3. Try APT-style repo URLs (for packagecloud, etc.)
-    if [[ "$repo_base_url" == *packagecloud* ]] || [[ "$repo_base_url" == *launchpad* ]]; then
+    if [[ "$repo_base_url" == *packagecloud* ]]; then
+        # Add standard packagecloud patterns
+        check_urls+=("$(normalize_url "$repo_base_url/Packages.gz")")
+        check_urls+=("$(normalize_url "$repo_base_url/Release")")
+        check_urls+=("$(normalize_url "$repo_base_url/InRelease")")
+        
+        # Add specific patterns for "any" version repositories (like VirtualGL and TurboVNC)
+        if [[ "$version_codename" == "any" ]]; then
+            check_urls+=("$(normalize_url "${repo_base_url%/}/repos/any/any/x86_64/Packages.gz")")
+            check_urls+=("$(normalize_url "${repo_base_url%/}/repos/any/any/x86_64/")")
+        fi
+    fi
+    
+    # 4. Try launchpad-specific URLs
+    if [[ "$repo_base_url" == *launchpad* ]]; then
         check_urls+=("$(normalize_url "$repo_base_url/$version_codename/InRelease")")
     fi
     
@@ -111,23 +125,69 @@ check_package_repo_available() {
         return 1
     fi
     
-    # For Chrome repository which doesn't have InRelease available for checking
-    if [[ "$nickname" = "chrome" ]]; then
-        # Try checking main/binary-amd64/Packages.gz which is more reliable
+    # Special handling for Google Chrome (exception case)
+    if [ "$nickname" = "chrome" ]; then
+        # Try checking main/binary-amd64/Packages.gz which is more reliable for Chrome
         local packages_url="$(normalize_url "$repo_base_url/dists/stable/main/binary-amd64/Packages.gz")"
         if curl --output /dev/null --silent --head --fail "$packages_url"; then
             log_debug "Package repository is available: $nickname ($packages_url)" "package_manager"
             return 0
         fi
+    # Check for PPA repositories (based on URL pattern, not package name)
+    elif [[ "$repo_base_url" == *"ppa.launchpadcontent.net"* ]] || [[ "$repo_base_url" == *"launchpad.net"* ]]; then
+        # For PPA repositories, check Release file
+        local release_url="$(normalize_url "$repo_base_url/dists/$version_codename/Release")"
+        if curl --output /dev/null --silent --head --fail "$release_url"; then
+            log_debug "PPA repository is available: $nickname ($release_url)" "package_manager"
+            return 0
+        fi
+    # Check for packagecloud repositories
+    elif [[ "$repo_base_url" == *"packagecloud.io"* ]]; then
+        # For packagecloud repositories, try multiple patterns
+        # The URL patterns for packagecloud are different from standard repos
+        local pc_urls=(
+            "$(normalize_url "$repo_base_url/Packages.gz")"
+            "$(normalize_url "$repo_base_url/Release")"
+            "$(normalize_url "$repo_base_url/InRelease")"
+            "$(normalize_url "$repo_base_url/dists/any/InRelease")"
+            "$(normalize_url "$repo_base_url/dists/any/Release")"
+        )
+        
+        # Add specific patterns for "any" version repositories (like VirtualGL and TurboVNC)
+        if [[ "$version_codename" == "any" ]]; then
+            pc_urls+=(
+                "$(normalize_url "${repo_base_url%/}/repos/any/any/x86_64/Packages.gz")"
+                "$(normalize_url "${repo_base_url%/}/repos/any/any/x86_64/")"
+            )
+        fi
+        
+        for pc_url in "${pc_urls[@]}"; do
+            if curl --output /dev/null --silent --head --fail "$pc_url"; then
+                log_debug "Packagecloud repository is available: $nickname ($pc_url)" "package_manager"
+                return 0
+            fi
+        done
+    # Default: check using the URL from parse_package_repo
     else
-        # Check if the repository is available using the URL from parse_package_repo
         if curl --output /dev/null --silent --head --fail "$repo_url"; then
-            log_debug "Package repository is available: $nickname ($repo_url)" "package_manager"
+            log_debug "Standard repository is available: $nickname ($repo_url)" "package_manager"
             return 0
         fi
     fi
     
-    # If we get here, the repository is not available
+    # If we reach here, the repository is not available with the primary check
+    # Try alternative URL patterns as fallbacks
+    
+    # Try with dists path
+    if [[ ! "$repo_url" == */dists/* ]]; then
+        local dists_url="$(normalize_url "$repo_base_url/dists/$version_codename/InRelease")"
+        if curl --output /dev/null --silent --head --fail "$dists_url"; then
+            log_debug "Repository available via alternative URL: $nickname ($dists_url)" "package_manager"
+            return 0
+        fi
+    fi
+    
+    # If all checks failed, the repository is not available
     log_warning "Package repository is not available: $nickname ($repo_url)" "package_manager"
     return 1
 }
@@ -248,9 +308,9 @@ install_package() {
         Sudo apt update >/dev/null
     fi
     
-    # Special handling for wine (need 32-bit support)
-    if [ "$nickname" = "wine" ]; then
-        log_debug "Adding 32-bit architecture support for wine" "package_manager"
+    # Check if multi-arch support is needed based on architecture string
+    if [[ "$arch" == *","* ]] && [[ "$arch" == *"i386"* ]]; then
+        log_debug "Adding i386 architecture support for multi-arch package" "package_manager"
         Sudo dpkg --add-architecture i386
     fi
     

@@ -17,8 +17,12 @@ log_info "Starting test suite for setup script" "test_suite"
 # List of test scripts to run
 TEST_SCRIPTS=(
     "test_sudo.sh"
-    "test_safe_modify_file.sh"
+    "test_safe_insert.sh"
+    "test_safe_remove.sh"
     "test_package_manager.sh"
+    "test_user_management.sh"
+    "test_power.sh"
+    "test_proxy.sh"
 )
 
 # Run each test script

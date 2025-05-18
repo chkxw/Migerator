@@ -56,16 +56,16 @@ verify_file_content() {
 # Test 1: Test adding content to a new file with auto-confirmation
 log_info "Test 1: Adding content to a new file with auto-confirmation" "test_safe_modify"
 test_file="$TEST_DIR/test1.txt"
-title_line="# Test Title"
-content_line1="This is test content 1"
-content_line2="This is test content 2"
+content="# Test Title
+This is test content 1
+This is test content 2"
 
 # Set auto-confirmation mode
 set_global_var "confirm_all" "true"
 
 # Run the function
-if safe_insert "Test 1" "$test_file" "$title_line" "$content_line1" "$content_line2"; then
-    expected_content=$(printf "%s\n%s\n%s" "$title_line" "$content_line1" "$content_line2")
+if safe_insert "Test 1" "$test_file" "$content"; then
+    expected_content="$content"
     if verify_file_content "$test_file" "$expected_content"; then
         log_info "Test 1 passed: Content added correctly to new file" "test_safe_modify"
     else
@@ -81,12 +81,12 @@ test_file="$TEST_DIR/test2.txt"
 initial_content="Initial content"
 create_test_file "$test_file" "$initial_content"
 
-title_line="# New Section"
-content_line1="New content line 1"
-content_line2="New content line 2"
+content="# New Section
+New content line 1
+New content line 2"
 
-if safe_insert "Test 2" "$test_file" "$title_line" "$content_line1" "$content_line2"; then
-    expected_content=$(printf "%s\n%s\n%s\n%s" "$initial_content" "$title_line" "$content_line1" "$content_line2")
+if safe_insert "Test 2" "$test_file" "$content"; then
+    expected_content=$(printf "%s\n%s" "$initial_content" "$content")
     if verify_file_content "$test_file" "$expected_content"; then
         log_info "Test 2 passed: Content added correctly to existing file" "test_safe_modify"
     else
@@ -99,17 +99,19 @@ fi
 # Test 3: Test adding content with existing title line
 log_info "Test 3: Adding content with existing title line" "test_safe_modify"
 test_file="$TEST_DIR/test3.txt"
-initial_content="Initial content\n# Existing Section\nExisting content"
+initial_content="Initial content
+# Existing Section
+Existing content"
 create_test_file "$test_file" "$initial_content"
 
-title_line="# Existing Section"
-content_line1="New content line 1"
-content_line2="New content line 2"
+content="# Existing Section
+New content line 1
+New content line 2"
 
-if safe_insert "Test 3" "$test_file" "$title_line" "$content_line1" "$content_line2"; then
+if safe_insert "Test 3" "$test_file" "$content"; then
     # Since we're dealing with an existing title line, the content might vary
     # Let's just verify that our new content lines are present
-    if grep -q "$content_line1" "$test_file" && grep -q "$content_line2" "$test_file"; then
+    if grep -q "New content line 1" "$test_file" && grep -q "New content line 2" "$test_file"; then
         log_info "Test 3 passed: Content added correctly with existing title line" "test_safe_modify"
     else
         log_error "Test 3 failed: Content not added correctly with existing title line" "test_safe_modify"
@@ -122,17 +124,20 @@ fi
 # Test 4: Test adding existing content (no changes)
 log_info "Test 4: Adding existing content (no changes)" "test_safe_modify"
 test_file="$TEST_DIR/test4.txt"
-initial_content="Initial content\n# Existing Section\nExisting content line 1\nExisting content line 2"
+initial_content="Initial content
+# Existing Section
+Existing content line 1
+Existing content line 2"
 create_test_file "$test_file" "$initial_content"
 
-title_line="# Existing Section"
-content_line1="Existing content line 1"
-content_line2="Existing content line 2"
+content="# Existing Section
+Existing content line 1
+Existing content line 2"
 
-if safe_insert "Test 4" "$test_file" "$title_line" "$content_line1" "$content_line2"; then
+if safe_insert "Test 4" "$test_file" "$content"; then
     # Since we're adding existing content, the file content might not change
     # Let's just verify that our content lines are present
-    if grep -q "$content_line1" "$test_file" && grep -q "$content_line2" "$test_file"; then
+    if grep -q "Existing content line 1" "$test_file" && grep -q "Existing content line 2" "$test_file"; then
         log_info "Test 4 passed: No changes when content already exists" "test_safe_modify"
     else
         log_error "Test 4 failed: Unexpected changes when content already exists" "test_safe_modify"
@@ -146,12 +151,12 @@ fi
 log_info "Test 5: Creating directory structure" "test_safe_modify"
 nested_dir="$TEST_DIR/nested/dir/structure"
 test_file="$nested_dir/test5.txt"
-title_line="# Nested File"
-content_line="Content in nested directory"
+content="# Nested File
+Content in nested directory"
 
-if safe_insert "Test 5" "$test_file" "$title_line" "$content_line"; then
+if safe_insert "Test 5" "$test_file" "$content"; then
     if [ -f "$test_file" ]; then
-        expected_content=$(printf "%s\n%s" "$title_line" "$content_line")
+        expected_content="$content"
         if verify_file_content "$test_file" "$expected_content"; then
             log_info "Test 5 passed: Directory structure created and file modified" "test_safe_modify"
         else
