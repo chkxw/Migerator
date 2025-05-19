@@ -455,9 +455,7 @@ install_package_with_processing() {
     
     # Pre-processing
     log_debug "Running pre-processing for $nickname" "$MODULE_NAME"
-    if ! handle_package_processing "$nickname" "pre_install"; then
-        log_warning "Pre-processing for $nickname returned non-zero status" "$MODULE_NAME"
-    fi
+    handle_package_processing "$nickname" "install" # Call with correct operation name
     
     # Install the package using core functionality
     log_debug "Installing package $nickname" "$MODULE_NAME"
@@ -504,7 +502,7 @@ uninstall_package() {
         log_info "Package $nickname ($package_name) is not installed, skipping uninstallation" "$MODULE_NAME"
         
         # Still remove the repository information if requested
-        if [ "${SCRIPT_CONFIG[remove_repos]}" = "true" ]; then
+        if [ "$remove_repos_option" = "true" ]; then
             log_info "Removing repository information for $nickname" "$MODULE_NAME"
             # Remove repository file
             local repo_file="/etc/apt/sources.list.d/${nickname}.list"
@@ -543,7 +541,7 @@ uninstall_package() {
     fi
     
     # Remove repository information if requested
-    if [ "${SCRIPT_CONFIG[remove_repos]}" = "true" ]; then
+    if [ "$remove_repos_option" = "true" ]; then
         log_info "Removing repository information for $nickname" "$MODULE_NAME"
         # Remove repository file
         local repo_file="/etc/apt/sources.list.d/${nickname}.list"
@@ -570,8 +568,8 @@ uninstall_package() {
         log_warning "Post-removal processing for $nickname returned non-zero status" "$MODULE_NAME"
     fi
     
-    # Run autoremove to clean up dependencies if requested
-    if [ "${SCRIPT_CONFIG[autoremove]}" = "true" ]; then
+    # Run autoremove to clean up dependencies if requested or by default
+    if [ "$auto_remove_option" = "true" ]; then
         log_debug "Running autoremove to clean up dependencies" "$MODULE_NAME"
         Sudo apt autoremove -y
     fi
@@ -635,7 +633,7 @@ uninstall_packages() {
     # Uninstall each package
     for package in "${packages[@]}"; do
         log_debug "Uninstalling package: $package" "$MODULE_NAME"
-        if ! uninstall_package "$package" "${SCRIPT_CONFIG[purge]}"; then
+        if ! uninstall_package "$package" "$purge_option"; then
             log_error "Failed to uninstall package: $package" "$MODULE_NAME"
             result=1
         else
@@ -766,8 +764,12 @@ packages_main() {
         show_help="true"
     fi
     
+    # Check if first argument is help
+    if [ $# -gt 0 ] && { [ "$1" = "-h" ] || [ "$1" = "--help" ]; }; then
+        show_help="true"
+        shift
     # First argument is the command
-    if [ $# -gt 0 ]; then
+    elif [ $# -gt 0 ]; then
         command="$1"
         shift
     fi
@@ -808,10 +810,11 @@ packages_main() {
         esac
     done
     
-    # Set global configuration values
-    set_global_var "purge" "$purge"
-    set_global_var "remove_repos" "$remove_repos"
-    set_global_var "autoremove" "$autoremove"
+    # Store values locally instead of in global configuration
+    local purge_option="$purge"
+    local auto_remove_option="${autoremove:-true}" # Default to true
+    local remove_repos_option="false" # Don't remove repos by default
+    log_debug "Using purge: $purge_option, auto_remove: $auto_remove_option" "$MODULE_NAME"
     
     # Show help message
     if [ "$show_help" = "true" ]; then

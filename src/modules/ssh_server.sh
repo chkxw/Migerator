@@ -60,8 +60,8 @@ ssh_server_setup() {
     # Generate and apply configuration
     local config_content=$(ssh_server_generate_config "$port")
     
-    # Safely add configuration
-    if ! safe_insert "Configure SSH server" "$config_file" "$config_content"; then
+    # Safely add configuration with sudo
+    if ! Sudo safe_insert "Configure SSH server" "$config_file" "$config_content"; then
         log_error "Failed to configure SSH server" "$MODULE_NAME"
         return 1
     fi
@@ -109,8 +109,8 @@ ssh_server_cleanup() {
     # Generate content to remove
     local config_content=$(ssh_server_generate_config "$port")
     
-    # Safely remove configuration
-    if ! safe_remove "Remove SSH server configuration" "$config_file" "$config_content"; then
+    # Safely remove configuration with sudo
+    if ! Sudo safe_remove "Remove SSH server configuration" "$config_file" "$config_content"; then
         log_error "Failed to remove SSH server configuration" "$MODULE_NAME"
         return 1
     fi

@@ -237,6 +237,18 @@ PKG_FORMAL_NAME[wifi-hotspot]="linux-wifi-hotspot"
 PKG_GPG_KEY_URL[wifi-hotspot]="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x0E49A504B40CA53C5D8C72B487B8838C5E2893D3"
 PKG_ARCH[wifi-hotspot]="amd64"
 PKG_VERSION_CODENAME[wifi-hotspot]="$OS_CODENAME"
+PKG_BRANCH[wifi-hotspot]="main"
+PKG_DEB_SRC[wifi-hotspot]="true"
+PKG_REPO_BASE_URL[wifi-hotspot]="https://ppa.launchpadcontent.net/lakinduakash/lwh/ubuntu"
+
+# ros (Noetic)
+PKG_FORMAL_NAME[ros]="ros-noetic-desktop-full"
+PKG_GPG_KEY_URL[ros]="https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc"
+PKG_ARCH[ros]="amd64"
+PKG_VERSION_CODENAME[ros]="$OS_CODENAME"
+PKG_BRANCH[ros]="main"
+PKG_DEB_SRC[ros]="false"
+PKG_REPO_BASE_URL[ros]="http://packages.ros.org/ros/ubuntu"
 
 # Package Groups Definition
 # These are groups of packages for batch installation

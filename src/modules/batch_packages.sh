@@ -154,19 +154,12 @@ install_package_group() {
     
     # Update package lists
     log_debug "Updating package lists before installation" "batch_packages"
-    # SIMULATION MODE FOR TESTING - don't actually update
-    log_debug "SIMULATION: Would run apt update" "batch_packages"
-    # Sudo apt update >/dev/null
+    Sudo apt update >/dev/null
     
     # Install packages
     log_info "Installing packages from group: $group_name" "batch_packages"
     
-    # SIMULATION MODE FOR TESTING - don't actually install
-    log_info "SIMULATION: Would install packages: $package_list" "batch_packages"
-    # Sudo apt install -y $package_list
-    
-    # Simulate success
-    log_info "SIMULATION: Package installation successful" "batch_packages"
+    Sudo apt install -y $package_list
     
     log_info "Successfully installed package group: $group_name" "batch_packages"
     return 0
@@ -227,22 +220,15 @@ remove_package_group() {
     # Remove packages
     log_info "Removing packages from group: $group_name" "batch_packages"
     
-    # SIMULATION MODE FOR TESTING - don't actually remove
     if [ "$purge" = "true" ]; then
-        log_info "SIMULATION: Would purge packages: $package_list" "batch_packages"
-        # Sudo apt purge -y $package_list
+        Sudo apt purge -y $package_list
     else
-        log_info "SIMULATION: Would remove packages: $package_list" "batch_packages"
-        # Sudo apt remove -y $package_list
+        Sudo apt remove -y $package_list
     fi
-    
-    # Simulate success
-    log_info "SIMULATION: Package removal successful" "batch_packages"
     
     # Run autoremove to clean up dependencies
     log_debug "Running autoremove to clean up dependencies" "batch_packages"
-    log_debug "SIMULATION: Would run apt autoremove" "batch_packages"
-    # Sudo apt autoremove -y
+    Sudo apt autoremove -y
     
     log_info "Successfully removed package group: $group_name" "batch_packages"
     return 0
