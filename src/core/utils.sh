@@ -210,6 +210,12 @@ get_value() {
 # Usage: detect_os_info
 # Sets globals: OS_NAME, OS_VERSION, OS_CODENAME
 detect_os_info() {
+    # Check if already detected (caching)
+    if [[ -n "$OS_NAME" ]] && [[ -n "$OS_VERSION" ]] && [[ -n "$OS_CODENAME" ]]; then
+        log_debug "Using cached OS information: $OS_NAME $OS_VERSION ($OS_CODENAME)" "detect_os"
+        return 0
+    fi
+    
     log_debug "Detecting OS information" "detect_os"
     
     # Get OS information from /etc/os-release

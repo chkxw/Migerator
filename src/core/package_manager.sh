@@ -231,9 +231,24 @@ register_package_repo() {
     log_debug "Downloading GPG key from $gpg_key_url to $gpg_key_file" "package_manager"
     
     if [[ "$gpg_key_url" == *"keyserver.ubuntu.com"* ]]; then
-        # Handle keys from Ubuntu keyserver
+        # Handle keys from Ubuntu keyserver - use a more robust approach
         local key_id=$(echo "$gpg_key_url" | grep -o '0x[A-Z0-9]*')
-        Sudo bash -c "curl -fsSL $gpg_key_url | gpg --yes --dearmor --batch --no-tty -o $gpg_key_file"
+        log_debug "Extracted key ID: $key_id" "package_manager"
+        # Create a temporary file to download and process the key
+        local temp_key="/tmp/${nickname}-key.gpg"
+        if curl -fsSL "$gpg_key_url" > "$temp_key.asc" 2>/dev/null; then
+            if gpg --homedir /tmp --dearmor --batch --no-tty < "$temp_key.asc" > "$temp_key" 2>/dev/null; then
+                Sudo cp "$temp_key" "$gpg_key_file"
+                rm -f "$temp_key" "$temp_key.asc"
+            else
+                log_error "Failed to process GPG key for $nickname" "package_manager"
+                rm -f "$temp_key" "$temp_key.asc"
+                return 1
+            fi
+        else
+            log_error "Failed to download GPG key for $nickname" "package_manager"
+            return 1
+        fi
     else
         # Regular key URLs
         Sudo bash -c "curl -fsSL $gpg_key_url | gpg --yes --dearmor --batch --no-tty -o $gpg_key_file"
