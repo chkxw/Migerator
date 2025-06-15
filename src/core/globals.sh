@@ -250,6 +250,15 @@ PKG_BRANCH[ros]="main"
 PKG_DEB_SRC[ros]="false"
 PKG_REPO_BASE_URL[ros]="http://packages.ros.org/ros/ubuntu"
 
+# Thunderbird
+PKG_FORMAL_NAME[thunderbird]="thunderbird"
+PKG_GPG_KEY_URL[thunderbird]="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x0AB215679C571D1C8325275B9BDB3D89CE49EC21"
+PKG_ARCH[thunderbird]="amd64"
+PKG_VERSION_CODENAME[thunderbird]="$OS_CODENAME"
+PKG_BRANCH[thunderbird]="main"
+PKG_DEB_SRC[thunderbird]="true"
+PKG_REPO_BASE_URL[thunderbird]="https://ppa.launchpadcontent.net/mozillateam/ppa/ubuntu"
+
 # Package Groups Definition
 # These are groups of packages for batch installation
 
@@ -350,6 +359,62 @@ PKG_BRANCH[android-studio]="main"
 PKG_DEB_SRC[android-studio]="true"
 PKG_REPO_BASE_URL[android-studio]="https://ppa.launchpadcontent.net/maarten-fonville/android-studio/ubuntu"
 
+# Git Repository Configuration
+# Structure: repo_nickname -> url, directory, branch, ssh_key
+declare -A GIT_REPO_URL
+declare -A GIT_REPO_DIR
+declare -A GIT_REPO_BRANCH
+declare -A GIT_REPO_SSH_KEY
+
+# Example repository configurations
+# GIT_REPO_URL[myproject]="https://github.com/username/myproject.git"
+# GIT_REPO_DIR[myproject]="$HOME/projects/myproject"
+# GIT_REPO_BRANCH[myproject]="main"
+# GIT_REPO_SSH_KEY[myproject]=""
+
+GIT_REPO_URL[usr_scripts]="git@gitee.com:chkxwlyh/usr_scripts.git"
+GIT_REPO_DIR[usr_scripts]="/usr/local/usr_scripts"
+GIT_REPO_BRANCH[usr_scripts]="master"
+GIT_REPO_SSH_KEY[usr_scripts]="$HOME/.ssh/id_ed25519"
+
+GIT_REPO_URL[important]="git@gitee.com:chkxwlyh/important.git"
+GIT_REPO_DIR[important]="$HOME/Documents/important"
+GIT_REPO_BRANCH[important]="master"
+GIT_REPO_SSH_KEY[important]="$HOME/.ssh/id_ed25519"
+
+# Symlink Configuration
+# Structure: symlink_nickname -> source, target
+declare -A SYMLINK_SOURCE
+declare -A SYMLINK_TARGET
+
+# Bash aliases
+SYMLINK_SOURCE[bash_aliases]="/usr/local/usr_scripts/ubuntu_configs/bash_aliases.sh"
+SYMLINK_TARGET[bash_aliases]="$HOME/.bash_aliases"
+
+# Git configuration
+SYMLINK_SOURCE[gitconfig]="/usr/local/usr_scripts/ubuntu_configs/gitconfig"
+SYMLINK_TARGET[gitconfig]="$HOME/.gitconfig"
+
+# Profile
+SYMLINK_SOURCE[profile]="/usr/local/usr_scripts/ubuntu_configs/profile"
+SYMLINK_TARGET[profile]="$HOME/.profile"
+
+# Pip configuration (China)
+SYMLINK_SOURCE[pip_china]="/usr/local/usr_scripts/ubuntu_configs/pip.conf.china"
+SYMLINK_TARGET[pip_china]="$HOME/.pip/pip.conf"
+
+# Pip configuration (US)
+SYMLINK_SOURCE[pip_us]="/usr/local/usr_scripts/ubuntu_configs/pip.conf.us"
+SYMLINK_TARGET[pip_us]="$HOME/.pip/pip.conf"
+
+# Thunderbird message filter rules
+SYMLINK_SOURCE[msgfilter]="/usr/local/usr_scripts/ubuntu_configs/msgFilterRules.dat"
+SYMLINK_TARGET[msgfilter]="$HOME/.thunderbird/*/ImapMail/*/msgFilterRules.dat"
+
+# Study daemon service
+SYMLINK_SOURCE[study_daemon]="/usr/local/usr_scripts/ubuntu_configs/study_daemon.service"
+SYMLINK_TARGET[study_daemon]="/etc/systemd/system/study_daemon.service"
+
 # Function to get a global variable
 # Usage: global_vars key
 # Returns: The value of the key or empty if not found
@@ -396,6 +461,12 @@ global_vars() {
             ;;
         "package_repos")
             echo "${!PKG_FORMAL_NAME[@]}"
+            ;;
+        "git_repos")
+            echo "${!GIT_REPO_URL[@]}"
+            ;;
+        "symlinks")
+            echo "${!SYMLINK_SOURCE[@]}"
             ;;
         *)
             log_warning "Global variable not found: $key" "globals"
@@ -455,6 +526,12 @@ export PKG_VERSION_CODENAME
 export PKG_BRANCH
 export PKG_DEB_SRC
 export PKG_REPO_BASE_URL
+export GIT_REPO_URL
+export GIT_REPO_DIR
+export GIT_REPO_BRANCH
+export GIT_REPO_SSH_KEY
+export SYMLINK_SOURCE
+export SYMLINK_TARGET
 export PROXY_CONFIG
 export USER_CONFIG
 export CONDA_CONFIG

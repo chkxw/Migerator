@@ -266,8 +266,91 @@ ensure_directory() {
     fi
 }
 
+# Function to prompt user for input
+# Usage: prompt_input "prompt message" [default_value]
+# Returns: User input via echo
+prompt_input() {
+    local prompt_message="$1"
+    local default_value="$2"
+    local user_input
+    
+    if [ -n "$default_value" ]; then
+        echo -n "$prompt_message [$default_value]: " >&2
+    else
+        echo -n "$prompt_message: " >&2
+    fi
+    
+    read -r user_input
+    
+    # Use default if no input provided
+    if [ -z "$user_input" ] && [ -n "$default_value" ]; then
+        user_input="$default_value"
+    fi
+    
+    echo "$user_input"
+}
+
+# Function to prompt user for password (hidden input)
+# Usage: prompt_password "prompt message"
+# Returns: Password via echo
+prompt_password() {
+    local prompt_message="$1"
+    local password
+    
+    # Check if we can disable echo for secure input
+    if command -v stty >/dev/null 2>&1; then
+        # Use stty method for better compatibility
+        echo -n "$prompt_message: " >&2
+        stty -echo
+        read -r password
+        stty echo
+        echo >&2  # New line after password input (to stderr)
+    else
+        # Fallback to read -s
+        echo -n "$prompt_message: " >&2
+        read -s -r password
+        echo >&2  # New line after password input (to stderr)
+    fi
+    
+    # Trim any leading/trailing whitespace and carriage returns
+    password="${password#"${password%%[![:space:]]*}"}"  # Remove leading whitespace
+    password="${password%"${password##*[![:space:]]}"}"  # Remove trailing whitespace
+    password="${password//$'\r'/}"  # Remove carriage returns
+    
+    echo "$password"
+}
+
+# Function to prompt user for multiline input
+# Usage: prompt_multiline "prompt message" "end_marker"
+# Returns: Multiline input via echo
+prompt_multiline() {
+    local prompt_message="$1"
+    local end_marker="${2:-END}"
+    local input=""
+    local line
+    
+    echo "$prompt_message"
+    echo "(Enter '$end_marker' on a new line to finish)"
+    
+    while IFS= read -r line; do
+        if [ "$line" = "$end_marker" ]; then
+            break
+        fi
+        if [ -n "$input" ]; then
+            input="$input"$'\n'"$line"
+        else
+            input="$line"
+        fi
+    done
+    
+    echo "$input"
+}
+
 # Export all functions
 export -f confirm
+export -f prompt_input
+export -f prompt_password
+export -f prompt_multiline
 export -f create_symlink
 export -f check_package_installed
 export -f check_internet_connection

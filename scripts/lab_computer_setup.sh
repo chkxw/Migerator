@@ -25,7 +25,7 @@ batch_packages_main install common_deps \
 batch_packages_main install utilities \
 batch_packages_main install dev_tools \
 batch_packages_main install ml_tools \
-packages_main install chrome \
+packages_main install google-chrome \
 packages_main install vscode \
 packages_main install slack \
 packages_main install nodejs \

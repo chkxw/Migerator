@@ -28,6 +28,7 @@ The current project structure is as follows:
 │   │   ├── package_manager.sh# Package management functionality
 │   │   └── sudo.sh           # Sudo execution functionality
 │   ├── modules/              # High-level modules (Level 2)
+│   │   ├── atuin.sh          # Atuin shell history manager
 │   │   ├── conda.sh          # Conda installation and configuration
 │   │   ├── lab_proxy.sh      # Proxy configuration for lab environment
 │   │   ├── lab_users.sh      # User management for lab environment
@@ -130,8 +131,13 @@ If a Level 2 command doesn't receive enough parameters, it falls back to interac
 
 2. **Utility Functions** (utils.sh)
    - Implementation style: Pure Bash functions without external dependencies
-   - Key functions: `confirm`, `ensure_directory`
-   - Features: User interaction, directory manipulation
+   - Key functions: 
+     - `confirm`: Interactive yes/no confirmation with auto-confirm support
+     - `ensure_directory`: Creates directories with specified permissions
+     - `prompt_input`: Prompts user for input with optional default values
+     - `prompt_password`: Secure password input with hidden characters
+     - `prompt_multiline`: Collects multiline input with custom end marker
+   - Features: User interaction, directory manipulation, secure input handling
 
 3. **Global Configuration** (globals.sh)
    - Implementation style: Associative arrays and exported variables
@@ -610,3 +616,410 @@ fi
 ```
 
 Following these guidelines will ensure consistency across all modules, facilitate maintenance, and enable the comprehensive reversibility of all configuration changes made by the setup script.
+
+## Git Operations Core Module (git_ops.sh)
+
+The git operations core module provides low-level git repository management functions with SSH key support and comprehensive submodule handling.
+
+### Functions
+
+#### git_clone
+Clones a git repository with automatic submodule initialization.
+
+```bash
+git_clone repo_url target_dir [options]
+```
+
+Options:
+- `--ssh-key PATH`: Path to SSH private key for authentication
+- `--branch NAME`: Branch to checkout (default: repository default)
+- `--depth NUMBER`: Create a shallow clone with specified depth
+- `--force`: Remove existing directory before cloning
+
+Features:
+- **Recursive by default**: Automatically clones all submodules
+- **SSH key support**: Works with private repositories requiring authentication
+- **Validation**: Checks for existing directories and validates inputs
+- **Parent directory creation**: Automatically creates parent directories if needed
+
+Example:
+```bash
+# Clone with SSH key
+git_clone "git@github.com:user/repo.git" "/home/user/repo" --ssh-key ~/.ssh/id_rsa
+
+# Clone specific branch with shallow history
+git_clone "https://github.com/user/repo.git" "/tmp/repo" --branch develop --depth 1
+
+# Force clone (removes existing directory)
+git_clone "https://github.com/user/repo.git" "/opt/app" --force
+```
+
+#### git_update
+Updates an existing git repository including all submodules.
+
+```bash
+git_update target_dir [options]
+```
+
+Options:
+- `--ssh-key PATH`: Path to SSH private key for authentication
+- `--branch NAME`: Branch to checkout and pull
+- `--reset`: Reset to origin state (discards local changes)
+
+Features:
+- **Submodule updates**: Automatically updates all submodules
+- **Reset capability**: Can discard local changes and clean untracked files
+- **Branch switching**: Can change branches during update
+
+Example:
+```bash
+# Update repository
+git_update "/home/user/repo"
+
+# Update and reset to origin state
+git_update "/home/user/repo" --reset
+
+# Update with SSH key and switch branch
+git_update "/home/user/repo" --ssh-key ~/.ssh/id_rsa --branch main
+```
+
+#### git_remove
+Removes a cloned git repository with optional backup.
+
+```bash
+git_remove target_dir [options]
+```
+
+Options:
+- `--backup PATH`: Create backup before removing
+
+Example:
+```bash
+# Remove repository
+git_remove "/home/user/repo"
+
+# Remove with backup
+git_remove "/home/user/repo" --backup "/home/user/repo.backup"
+```
+
+#### Helper Functions
+
+##### is_git_repo
+Checks if a directory is a git repository.
+
+```bash
+if is_git_repo "/path/to/dir"; then
+    echo "It's a git repository"
+fi
+```
+
+##### git_current_branch
+Gets the current branch of a git repository.
+
+```bash
+branch=$(git_current_branch "/path/to/repo")
+echo "Current branch: $branch"
+```
+
+##### git_remote_url
+Gets the remote URL of a git repository.
+
+```bash
+url=$(git_remote_url "/path/to/repo")
+echo "Remote URL: $url"
+```
+
+### Implementation Details
+
+1. **SSH Key Handling**: Uses `GIT_SSH_COMMAND` to specify SSH keys without modifying global git config
+2. **Error Handling**: Comprehensive validation and error messages
+3. **Logging**: Detailed debug logging following project standards
+4. **Submodules**: All operations handle submodules automatically
+5. **Security**: Validates SSH key files before use
+6. **Compatibility**: Works with various git hosting services (GitHub, GitLab, Bitbucket, etc.)
+
+### Usage as a Utility
+
+The git_ops.sh module can be used by other modules that need git functionality. For example:
+
+```bash
+# In another module
+source "$SCRIPT_DIR/../core/git_ops.sh"
+
+# Clone a repository as part of setup
+git_clone "https://github.com/user/config.git" "/opt/myapp/config" --branch stable
+
+# Update repository
+git_update "/opt/myapp/config" --reset
+
+# Check if directory is a git repo
+if is_git_repo "/opt/myapp"; then
+    echo "App directory is version controlled"
+fi
+```
+
+### Testing
+
+Test files:
+- `tests/test_git_ops.sh`: Tests core git operations
+- Covers: clone, update, remove, SSH key handling, submodules, error cases
+
+The module provides low-level git operations that can be used by other modules while maintaining the project's standards for logging, error handling, and reversibility.
+
+## Atuin Shell History Manager Module (atuin.sh)
+
+The Atuin module provides comprehensive management for the Atuin shell history synchronization tool, including installation, configuration, authentication, and sync operations.
+
+### Features
+
+1. **Installation Management**:
+   - Downloads and installs Atuin from official installer
+   - Detects existing installations
+   - Configures shell integration for bash, zsh, and profile
+   - Fully reversible installation
+
+2. **Authentication Support**:
+   - Login with existing accounts
+   - Register new accounts
+   - Interactive credential input for security
+   - Encryption key management
+
+3. **Configuration**:
+   - Automatic shell integration setup
+   - Sync settings management
+   - Multiple shell support (bash, zsh, profile)
+   - Configuration file generation
+
+4. **History Management**:
+   - Import existing shell history
+   - Sync history with cloud servers
+   - Automatic sync after setup
+
+### Functions
+
+#### Main Function
+```bash
+atuin_main [options]
+```
+
+Options:
+- `--shell SHELL`: Configure for specific shell (bash, zsh, profile, all)
+- `--no-sync`: Disable sync in configuration
+- `--login`: Login to existing account
+- `--register`: Register new account
+- `--username USER`: Username for login/registration
+- `--email EMAIL`: Email for registration
+- `--password PASS`: Password for login/registration
+- `--key KEY`: Encryption key for login
+- `--import`: Import existing shell history
+- `--sync`: Sync history with server after setup
+- `--remove`: Remove Atuin installation
+- `--help`: Display help message
+
+### Interactive Mode
+
+When credentials are not provided via command line, the module enters interactive mode:
+- Prompts for missing username, email, or password
+- Uses secure password input (hidden characters)
+- Confirms password during registration
+- Optional encryption key entry
+
+### Usage Examples
+
+```bash
+# Full installation with interactive login
+./setup.sh atuin_main --shell all --login
+
+# Non-interactive installation with credentials
+./setup.sh atuin_main --shell bash --login --username user --password pass --key "encryption key"
+
+# Register new account interactively
+./setup.sh atuin_main --register
+
+# Import history and sync
+./setup.sh atuin_main --import --sync
+
+# Remove Atuin completely
+./setup.sh atuin_main --remove
+```
+
+### Implementation Details
+
+1. **Content Generation Functions**:
+   - `atuin_generate_bash_init_content()`: Generates bash integration
+   - `atuin_generate_zsh_init_content()`: Generates zsh integration
+   - `atuin_generate_profile_init_content()`: Generates profile integration
+   - `atuin_generate_config_content()`: Generates Atuin configuration
+
+2. **Core Operations**:
+   - `atuin_install()`: Handles Atuin installation
+   - `atuin_configure_shell()`: Sets up shell integrations
+   - `atuin_login()`: Manages authentication with proper argument syntax
+   - `atuin_register()`: Handles new account registration
+   - `atuin_sync_history()`: Performs history synchronization
+   - `atuin_remove()`: Complete removal of Atuin and configurations
+
+3. **Security Features**:
+   - Interactive password input using `prompt_password()` from utils
+   - No credentials stored in shell history
+   - Encryption key support for cross-machine sync
+
+### Testing
+
+Test file: `tests/test_atuin.sh`
+- Installation and removal
+- Shell configuration for all supported shells
+- Login and registration flows
+- History import and sync operations
+- Interactive mode testing
+
+## Git Repository Management Module (git_repos.sh)
+
+The git_repos module provides high-level management of personal git repositories with batch operations and configuration management through the globals.sh system.
+
+### Features
+
+1. **Batch Repository Management**:
+   - Clone multiple repositories from centralized configuration
+   - Update all configured repositories at once
+   - Remove all cloned repositories with confirmation
+   - Skip existing directories by default (safe behavior)
+
+2. **Single Repository Operations**:
+   - Clone individual repositories with custom parameters
+   - Support for specific branches and SSH keys
+   - Force overwrite with explicit `--force` flag
+   - Update individual repositories
+
+3. **Configuration Management**:
+   - Repository definitions stored in `globals.sh`
+   - Support for URL, directory, branch, and SSH key per repository
+   - Variable expansion in paths (e.g., `$HOME/projects`)
+   - Example configuration generation
+
+4. **Safety Features**:
+   - Skip existing directories by default (no accidental overwrites)
+   - Force flag required for overwriting existing content
+   - Confirmation prompts for removal operations
+   - Comprehensive error handling and logging
+
+### Functions
+
+#### Main Function
+```bash
+git_repos_main [command] [options]
+```
+
+Commands:
+- `clone`: Clone repositories defined in globals.sh
+- `update`: Update existing repositories
+- `remove`: Remove cloned repositories
+
+Options:
+- `--url URL`: Clone single repository (requires --dir)
+- `--dir DIR`: Target directory for single clone
+- `--branch BR`: Branch to clone (default: main)
+- `--ssh-key KEY`: SSH key for authentication
+- `--force`: Force overwrite existing directories when cloning
+- `--help`: Display help message
+
+### Repository Configuration
+
+Repositories are configured in `globals.sh` using associative arrays:
+
+```bash
+# Example repository configurations
+GIT_REPO_URL[dotfiles]="git@github.com:user/dotfiles.git"
+GIT_REPO_DIR[dotfiles]="$HOME/.config/dotfiles"
+GIT_REPO_BRANCH[dotfiles]="main"
+GIT_REPO_SSH_KEY[dotfiles]="$HOME/.ssh/id_rsa"
+
+GIT_REPO_URL[project]="https://github.com/user/project.git"
+GIT_REPO_DIR[project]="$HOME/projects/project"
+GIT_REPO_BRANCH[project]="develop"
+GIT_REPO_SSH_KEY[project]=""  # No SSH key needed for public repos
+```
+
+### Usage Examples
+
+```bash
+# Clone all repositories from globals (skip existing)
+./setup.sh git_repos_main clone
+
+# Clone all repositories from globals (force overwrite)
+./setup.sh git_repos_main clone --force
+
+# Clone single repository
+./setup.sh git_repos_main clone --url https://github.com/user/repo.git --dir ~/projects/repo
+
+# Clone with SSH key and specific branch
+./setup.sh git_repos_main clone --url git@github.com:user/repo.git --dir ~/work/repo --branch develop --ssh-key ~/.ssh/work_key
+
+# Update all repositories
+./setup.sh git_repos_main update
+
+# Remove all cloned repositories (with confirmation)
+./setup.sh git_repos_main remove
+```
+
+### Implementation Details
+
+1. **Content Generation Functions**:
+   - `git_repos_generate_example_config()`: Generates example configuration for globals.sh
+
+2. **Core Operations**:
+   - `git_repos_clone_single()`: Clones a single repository with skip/force logic
+   - `git_repos_update_single()`: Updates a single repository
+   - `git_repos_clone_from_globals()`: Batch clone from configuration
+   - `git_repos_update_from_globals()`: Batch update from configuration
+   - `git_repos_remove_from_globals()`: Batch removal from configuration
+
+3. **Safety and Behavior**:
+   - **Skip by Default**: Returns status code 2 when directory exists without force
+   - **Force Override**: Uses `--force` flag to explicitly allow overwrites
+   - **Status Tracking**: Provides summary of operations (succeeded, failed, skipped)
+   - **Recursive Clone**: All repositories are cloned with `--recursive` for submodule support
+
+4. **Integration with git_ops.sh**:
+   - Uses core git operations for actual clone/update operations
+   - Inherits SSH key support and submodule handling
+   - Maintains consistent logging and error handling
+
+### Skip vs Force Behavior
+
+The module implements safe-by-default behavior:
+
+**Skip Mode (Default)**:
+```bash
+# If /home/user/repo already exists:
+git_repos_main clone --url https://github.com/user/repo.git --dir /home/user/repo
+# Result: Warns and skips, preserves existing content
+```
+
+**Force Mode (Explicit)**:
+```bash
+# If /home/user/repo already exists:
+git_repos_main clone --url https://github.com/user/repo.git --dir /home/user/repo --force
+# Result: Removes existing directory and clones fresh
+```
+
+### Return Values
+
+Functions return standardized exit codes:
+- `0`: Success
+- `1`: Error/failure
+- `2`: Skipped (directory exists, no force)
+
+### Testing
+
+Test file: `tests/test_git_repos.sh`
+- Example configuration generation
+- Globals configuration retrieval
+- Single repository operations
+- Skip behavior verification
+- Force behavior verification
+- Main function argument parsing
+- Module context preservation
+- Batch operations from globals
+
+The git_repos module provides a comprehensive solution for managing multiple personal repositories while maintaining safety through skip-by-default behavior and requiring explicit confirmation for potentially destructive operations.
