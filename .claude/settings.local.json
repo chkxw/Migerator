@@ -15,7 +15,16 @@
       "Bash(./tests/test_batch_packages.sh:*)",
       "Bash(./tests/run_tests.sh:*)",
       "Bash(git add:*)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(apt-get:*)",
+      "Bash(apt list:*)",
+      "Bash(dpkg:*)",
+      "Bash(apt-cache:*)",
+      "Bash(apt-helper:*)",
+      "Bash(/usr/lib/apt/apt-helper:*)",
+      "Bash(# Test with apt-helper download-file\n/usr/lib/apt/apt-helper download-file http://archive.ubuntu.com/ubuntu/dists/jammy/InRelease /tmp/test-inrelease 2>&1 | head -10)",
+      "Bash(add-apt-repository:*)",
+      "Bash(sudo rm:*)"
     ],
     "deny": []
   }

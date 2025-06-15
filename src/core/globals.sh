@@ -125,13 +125,13 @@ declare -A PKG_DEB_SRC
 declare -A PKG_REPO_BASE_URL
 
 # Chrome
-PKG_FORMAL_NAME[chrome]="google-chrome-stable"
-PKG_GPG_KEY_URL[chrome]="https://dl.google.com/linux/linux_signing_key.pub"
-PKG_ARCH[chrome]="amd64"
-PKG_VERSION_CODENAME[chrome]="stable"
-PKG_BRANCH[chrome]="main"
-PKG_DEB_SRC[chrome]="false"
-PKG_REPO_BASE_URL[chrome]="http://dl.google.com/linux/chrome/deb/"
+PKG_FORMAL_NAME[google-chrome]="google-chrome-stable"
+PKG_GPG_KEY_URL[google-chrome]="https://dl.google.com/linux/linux_signing_key.pub"
+PKG_ARCH[google-chrome]="amd64"
+PKG_VERSION_CODENAME[google-chrome]="stable"
+PKG_BRANCH[google-chrome]="main"
+PKG_DEB_SRC[google-chrome]="false"
+PKG_REPO_BASE_URL[google-chrome]="http://dl.google.com/linux/chrome/deb/"
 
 # VS Code
 PKG_FORMAL_NAME[vscode]="code"

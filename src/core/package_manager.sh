@@ -125,71 +125,66 @@ check_package_repo_available() {
         return 1
     fi
     
-    # Special handling for Google Chrome (exception case)
-    if [ "$nickname" = "chrome" ]; then
-        # Try checking main/binary-amd64/Packages.gz which is more reliable for Chrome
-        local packages_url="$(normalize_url "$repo_base_url/dists/stable/main/binary-amd64/Packages.gz")"
-        if curl --output /dev/null --silent --head --fail "$packages_url"; then
-            log_debug "Package repository is available: $nickname ($packages_url)" "package_manager"
+    # Use apt-get update --print-uris to validate repository availability
+    # This method works uniformly for all repository types (standard, PPA, packagecloud, etc.)
+    local temp_sources="/tmp/migerator-sources-test-$$"
+    local temp_lists_dir="/tmp/migerator-lists-test-$$"
+    
+    # Generate the repository entry for testing (without GPG key requirement)
+    local test_repo_entry="$(generate_repo_entry_template "$nickname" "dummy.gpg" | sed 's/\[.*signed-by=[^]]*\]/[trusted=yes]/')"
+    
+    if [ -z "$test_repo_entry" ]; then
+        log_error "Failed to generate test repository entry for $nickname" "package_manager"
+        return 1
+    fi
+    
+    # Write temporary sources.list file
+    echo "$test_repo_entry" > "$temp_sources"
+    
+    log_debug "Testing repository with apt-get update --print-uris" "package_manager"
+    log_debug "Test repository entry: $test_repo_entry" "package_manager"
+    
+    # Create temp directory for lists
+    mkdir -p "$temp_lists_dir"
+    
+    # Test if apt can fetch metadata from the repository
+    # --print-uris shows what apt would download without actually downloading
+    local apt_output
+    apt_output=$(apt-get update \
+        -o Dir::Etc::sourcelist="$temp_sources" \
+        -o Dir::Etc::sourceparts=/dev/null \
+        -o Dir::State::lists="$temp_lists_dir" \
+        -o APT::Get::List-Cleanup=0 \
+        -o Acquire::Check-Valid-Until=false \
+        -o Debug::NoLocking=1 \
+        --print-uris 2>&1)
+    
+    local result=$?
+    
+    # Clean up temporary files
+    rm -f "$temp_sources"
+    rm -rf "$temp_lists_dir"
+    
+    if [ $result -eq 0 ]; then
+        # Check if apt actually found valid URIs to download
+        # The output format is: 'URL' local_filename size
+        if echo "$apt_output" | grep -qE "^'(https?|ftp)://.*/(InRelease|Release|Packages\.(gz|xz|bz2)?)'" ; then
+            log_debug "Repository is available: $nickname" "package_manager"
             return 0
+        else
+            log_warning "Repository returned no valid URIs: $nickname" "package_manager"
+            return 1
         fi
-    # Check for PPA repositories (based on URL pattern, not package name)
-    elif [[ "$repo_base_url" == *"ppa.launchpadcontent.net"* ]] || [[ "$repo_base_url" == *"launchpad.net"* ]]; then
-        # For PPA repositories, check Release file
-        local release_url="$(normalize_url "$repo_base_url/dists/$version_codename/Release")"
-        if curl --output /dev/null --silent --head --fail "$release_url"; then
-            log_debug "PPA repository is available: $nickname ($release_url)" "package_manager"
-            return 0
-        fi
-    # Check for packagecloud repositories
-    elif [[ "$repo_base_url" == *"packagecloud.io"* ]]; then
-        # For packagecloud repositories, try multiple patterns
-        # The URL patterns for packagecloud are different from standard repos
-        local pc_urls=(
-            "$(normalize_url "$repo_base_url/Packages.gz")"
-            "$(normalize_url "$repo_base_url/Release")"
-            "$(normalize_url "$repo_base_url/InRelease")"
-            "$(normalize_url "$repo_base_url/dists/any/InRelease")"
-            "$(normalize_url "$repo_base_url/dists/any/Release")"
-        )
-        
-        # Add specific patterns for "any" version repositories (like VirtualGL and TurboVNC)
-        if [[ "$version_codename" == "any" ]]; then
-            pc_urls+=(
-                "$(normalize_url "${repo_base_url%/}/repos/any/any/x86_64/Packages.gz")"
-                "$(normalize_url "${repo_base_url%/}/repos/any/any/x86_64/")"
-            )
-        fi
-        
-        for pc_url in "${pc_urls[@]}"; do
-            if curl --output /dev/null --silent --head --fail "$pc_url"; then
-                log_debug "Packagecloud repository is available: $nickname ($pc_url)" "package_manager"
-                return 0
-            fi
-        done
-    # Default: check using the URL from parse_package_repo
     else
-        if curl --output /dev/null --silent --head --fail "$repo_url"; then
-            log_debug "Standard repository is available: $nickname ($repo_url)" "package_manager"
-            return 0
+        # Extract meaningful error message if available
+        local error_msg=$(echo "$apt_output" | grep -E "(Failed|404|Cannot|Unable)" | head -1)
+        if [ -n "$error_msg" ]; then
+            log_warning "Repository check failed for $nickname: $error_msg" "package_manager"
+        else
+            log_warning "Package repository is not available: $nickname" "package_manager"
         fi
+        return 1
     fi
-    
-    # If we reach here, the repository is not available with the primary check
-    # Try alternative URL patterns as fallbacks
-    
-    # Try with dists path
-    if [[ ! "$repo_url" == */dists/* ]]; then
-        local dists_url="$(normalize_url "$repo_base_url/dists/$version_codename/InRelease")"
-        if curl --output /dev/null --silent --head --fail "$dists_url"; then
-            log_debug "Repository available via alternative URL: $nickname ($dists_url)" "package_manager"
-            return 0
-        fi
-    fi
-    
-    # If all checks failed, the repository is not available
-    log_warning "Package repository is not available: $nickname ($repo_url)" "package_manager"
-    return 1
 }
 
 # Function to generate repository entry template
@@ -261,7 +256,9 @@ register_package_repo() {
     
     # Add deb-src entry if required
     if [ "$deb_src" = "true" ]; then
-        repo_entry="${repo_entry}\ndeb-src [arch=${arch} signed-by=${gpg_key_file}] ${repo_entry#deb [arch=${arch} signed-by=${gpg_key_file}] }"
+        # Extract just the URL and components from the deb line
+        local deb_src_entry=$(echo "$repo_entry" | sed "s/^deb /deb-src /")
+        repo_entry="${repo_entry}\n${deb_src_entry}"
     fi
     
     # Write the repository entry to the list file

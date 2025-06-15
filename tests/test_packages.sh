@@ -85,7 +85,7 @@ fi
 print_header "Package Info Parsing"
 
 # Test parsing package repository info for a known package (chrome)
-pkg_info=$(parse_package_repo "chrome" 2>/dev/null)
+pkg_info=$(parse_package_repo "google-chrome" 2>/dev/null)
 parse_result=$?
 
 if [ $parse_result -eq 0 ] && [ -n "$pkg_info" ]; then
@@ -98,7 +98,7 @@ fi
 print_header "Package Repository Availability Check"
 
 # Check if a well-known repository is available
-repo_available=$(check_package_repo_available "chrome" 2>/dev/null)
+repo_available=$(check_package_repo_available "google-chrome" 2>/dev/null)
 repo_result=$?
 
 if [ $repo_result -eq 0 ]; then

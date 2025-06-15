@@ -401,7 +401,7 @@ handle_package_processing() {
     log_debug "Handling package-specific processing for: $nickname ($operation)" "$MODULE_NAME"
     
     case "$nickname" in
-        chrome)
+        google-chrome)
             handle_chrome_processing "$operation"
             return $?
             ;;
@@ -662,7 +662,7 @@ install_package_set() {
     case "$set_name" in
         essential)
             packages=(
-                "chrome"
+                "google-chrome"
                 "vscode"
                 "ffmpeg"
                 "vlc"
@@ -670,7 +670,7 @@ install_package_set() {
             ;;
         development)
             packages=(
-                "chrome"
+                "google-chrome"
                 "vscode"
                 "docker"
                 "nodejs"
@@ -693,7 +693,7 @@ install_package_set() {
             ;;
         all)
             packages=(
-                "chrome"
+                "google-chrome"
                 "vscode"
                 "docker"
                 "nodejs"

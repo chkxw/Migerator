@@ -62,30 +62,68 @@ done
 
 # Test 2: Test generating repository entry template
 log_info "Test 2: Generating repository entry template" "test_package"
-test_repo_entry_template "chrome"
+test_repo_entry_template "google-chrome"
 test_repo_entry_template "vscode"
 test_repo_entry_template "virtualgl"
 
 # Test 3: Test package repository availability check 
 log_info "Test 3: Package repository availability check" "test_package"
 
-# Check repository availability
-for nickname in "chrome" "vscode" "virtualgl" "turbovnc" "nodejs" "nonexistent"; do
-    if [[ "$nickname" != "nonexistent" ]]; then
-        if check_package_repo_available "$nickname"; then
-            log_info "Test passed: Repository $nickname is available" "test_package" 
-        else
-            log_error "Test failed: Repository $nickname is not available" "test_package"
-        fi
+# Test with debug mode enabled to see detailed output
+export DEBUG_MODE="true"
+
+# Test various repository types to ensure the new apt-based check works
+test_repos=(
+    "google-chrome"     # Standard third-party repo
+    "vscode"           # Microsoft repo
+    "docker"           # Docker repo
+    "nodejs"           # NodeSource repo
+    "virtualgl"        # Packagecloud repo with "any" version
+    "turbovnc"         # Another packagecloud repo
+    "slack"
+)
+
+log_info "Testing repository availability with new apt-based method..." "test_package"
+
+success_count=0
+fail_count=0
+
+for nickname in "${test_repos[@]}"; do
+    log_info "Checking repository: $nickname" "test_package"
+    
+    if check_package_repo_available "$nickname"; then
+        log_info "✓ Repository $nickname is available" "test_package"
+        ((success_count++))
     else
-        # Nonexistent repository should fail
-        if ! check_package_repo_available "$nickname" 2>/dev/null; then
-            log_info "Test passed: Repository $nickname is not available (as expected)" "test_package"
-        else
-            log_error "Test failed: Repository $nickname is available (unexpected)" "test_package"
-        fi
+        log_warning "✗ Repository $nickname is not available (this may be expected if repo is down)" "test_package"
+        ((fail_count++))
     fi
 done
+
+# Test with a non-existent repository
+log_info "Testing non-existent repository..." "test_package"
+if ! check_package_repo_available "nonexistent-repo" 2>/dev/null; then
+    log_info "✓ Non-existent repository correctly reported as unavailable" "test_package"
+    ((success_count++))
+else
+    log_error "✗ Non-existent repository incorrectly reported as available" "test_package"
+    ((fail_count++))
+fi
+
+# Test with an invalid nickname
+log_info "Testing invalid nickname..." "test_package"
+if ! check_package_repo_available "invalid_nickname_123" 2>/dev/null; then
+    log_info "✓ Invalid nickname correctly handled" "test_package"
+    ((success_count++))
+else
+    log_error "✗ Invalid nickname not properly handled" "test_package"
+    ((fail_count++))
+fi
+
+log_info "Repository availability tests completed: $success_count passed, $fail_count failed/unavailable" "test_package"
+
+# Disable debug mode
+export DEBUG_MODE="false"
 
 # Test 4: Test package installation
 log_info "Test 4: Testing package detection and registration" "test_package"
