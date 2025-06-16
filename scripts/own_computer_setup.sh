@@ -21,14 +21,16 @@ batch_packages_main install common_deps \
 batch_packages_main install utilities \
 batch_packages_main install dev_tools \
 batch_packages_main install ml_tools \
-packages_main install google-chrome \
-packages_main install vscode \
-packages_main install slack \
+packages_main install google-chrome vscode slack \
 packages_main install nodejs \
-packages_main install virtualgl \
-packages_main install turbovnc \
+packages_main install virtualgl turbovnc \
+packages_main install thunderbird remmina wifi-hotspot \
+packages_main install ffmpeg vlc \
 ssh_server_main \
-conda_main --type miniforge \
+conda_main \
 atuin_main --shell bash --login --key 'dove broom ten trade pet heart inside scissors summer matrix trick vapor minimum venue remain hospital opera squeeze panda target metal service alcohol demand' --username chkxwlyh --sync \
+personal_setup_main setup \
+symlinks_main create --only npmrc --force \
+personal_setup_main install-claude \
 git_repos_main clone --only usr_scripts important \
 symlinks_main create --only profile bash_aliases gitconfig msgfilter study_daemon pip --force

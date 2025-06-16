@@ -1128,3 +1128,160 @@ channels:
 6. **Transparent Operations**: Users see and approve all configuration changes
 
 This enhancement ensures that conda installation provides an optimal out-of-the-box experience for all users while maintaining the safety and transparency standards established throughout the project.
+
+## Personal Computer Setup Module (personal_setup.sh)
+
+The personal_setup module provides essential personal computer configurations including system permission modifications and development tool installations.
+
+### Features
+
+1. **System Permission Management**:
+   - Modifies `/usr/local` permissions to 777 for unrestricted user access
+   - Safely restores `/usr/local` permissions to 755 during removal
+   - Enables permission-free development tool installations
+
+2. **Claude CLI Integration**:
+   - Installs Claude CLI globally via npm (`@anthropic-ai/claude-code`)
+   - Validates npm availability before installation
+   - Provides clean removal of Claude CLI
+   - Graceful handling of missing dependencies
+
+3. **Full Reversibility**:
+   - All operations can be completely undone
+   - `remove` command restores original system state
+   - Safe handling of cases where components are already removed
+
+### Functions
+
+#### Main Function
+```bash
+personal_setup_main [command] [options]
+```
+
+**Commands:**
+- `setup`: Setup personal computer configuration (sets /usr/local permissions to 777)
+- `install-claude`: Install Claude CLI via npm
+- `remove [--force]`: Remove personal computer configuration and Claude CLI
+
+**Options:**
+- `--force`: Force operation without confirmation
+- `--help, -h`: Display help message
+
+#### Core Operations
+
+**Permission Management:**
+- `personal_setup_configure_usr_local()`: Sets /usr/local permissions to 777
+- `personal_setup_restore_usr_local()`: Restores /usr/local permissions to 755
+
+**Claude CLI Management:**
+- `personal_setup_install_claude()`: Installs Claude CLI globally via npm
+- `personal_setup_remove_claude()`: Removes Claude CLI installation
+
+### Usage Examples
+
+```bash
+# Setup /usr/local permissions for development
+./setup.sh personal_setup_main setup
+
+# Install Claude CLI (requires npm)
+./setup.sh personal_setup_main install-claude
+
+# Remove all personal configurations
+./setup.sh personal_setup_main remove
+
+# Display help
+./setup.sh personal_setup_main --help
+```
+
+### Implementation Details
+
+1. **Permission Strategy**:
+   - Changes `/usr/local` to 777 permissions for unrestricted access
+   - Enables development tools to install without sudo requirements
+   - Automatically restores secure 755 permissions during removal
+
+2. **Claude CLI Installation**:
+   - Uses `npm install -g @anthropic-ai/claude-code`
+   - Validates npm availability before proceeding
+   - Provides clear error messages for missing dependencies
+   - Uses `npm uninstall -g @anthropic-ai/claude-code` for removal
+
+3. **Error Handling**:
+   - Comprehensive validation of system prerequisites
+   - Graceful handling of missing tools (npm, Claude CLI)
+   - Clear logging of all operations and failures
+   - Safe operation continuation when components are already removed
+
+4. **Integration Patterns**:
+   - Follows established project module patterns
+   - Uses standard argument parsing and help generation
+   - Implements MODULE_COMMANDS for CLI dispatcher integration
+   - Maintains consistent logging with module identification
+
+### Security Considerations
+
+**Permission Changes:**
+- `/usr/local` permission change to 777 provides broad access
+- Intended for personal development systems only
+- Should be used with caution on shared or production systems
+- Automatically restored to secure 755 during removal
+
+**Claude CLI Installation:**
+- Requires npm to be available and properly configured
+- Installs globally, making Claude CLI available system-wide
+- No additional security implications beyond standard npm global packages
+
+### Testing
+
+Test file: `tests/test_personal_setup.sh`
+
+**Test Coverage:**
+- Module loading and exports
+- Argument parsing and help generation
+- Function existence verification
+- Command recognition and processing
+- MODULE_COMMANDS integration
+- Error handling for invalid arguments
+
+**Test Limitations:**
+- Permission tests require sudo access (may fail in CI environments)
+- Claude CLI installation tests are limited to command recognition
+- Actual npm operations are not performed during testing
+
+### Module Metadata
+
+```bash
+MODULE_COMMANDS=(
+    "personal_setup_main setup:Setup personal computer configuration (/usr/local permissions)"
+    "personal_setup_main install-claude:Install Claude CLI via npm"
+    "personal_setup_main remove:Remove personal computer configuration (args: [--force])"
+)
+```
+
+**Export Structure:**
+- Exports only `personal_setup_main` function
+- Exports `MODULE_COMMANDS` array for CLI integration
+- Internal functions remain private to the module
+
+### Use Cases
+
+**Personal Development Setup:**
+```bash
+# Complete personal development environment setup
+./setup.sh personal_setup_main setup
+./setup.sh personal_setup_main install-claude
+```
+
+**Development Tool Installation:**
+```bash
+# Install Claude CLI only
+./setup.sh personal_setup_main install-claude
+```
+
+**System Cleanup:**
+```bash
+# Remove all personal configurations
+./setup.sh personal_setup_main remove
+```
+
+The personal_setup module provides essential personal computer configurations while maintaining the project's standards for safety, reversibility, and comprehensive logging. It's designed specifically for personal development systems where broader permissions and development tools are needed.

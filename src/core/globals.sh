@@ -411,6 +411,10 @@ SYMLINK_TARGET[msgfilter]="$HOME/.thunderbird/*/ImapMail/*/msgFilterRules.dat"
 SYMLINK_SOURCE[study_daemon]="/usr/local/usr_scripts/ubuntu_configs/study_daemon.service"
 SYMLINK_TARGET[study_daemon]="/etc/systemd/system/study_daemon.service"
 
+# NPM config
+SYMLINK_SOURCE[npmrc]="/usr/local/usr_scripts/ubuntu_configs/npmrc"
+SYMLINK_TARGET[npmrc]="$HOME/.npmrc"
+
 # Function to get a global variable
 # Usage: global_vars key
 # Returns: The value of the key or empty if not found
