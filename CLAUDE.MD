@@ -1023,3 +1023,108 @@ Test file: `tests/test_git_repos.sh`
 - Batch operations from globals
 
 The git_repos module provides a comprehensive solution for managing multiple personal repositories while maintaining safety through skip-by-default behavior and requiring explicit confirmation for potentially destructive operations.
+
+## Recent Changes and Improvements
+
+### Conda Module Enhancements (December 2024)
+
+The conda module (`src/modules/conda.sh`) has been significantly enhanced to improve user experience and follow established project patterns:
+
+#### Key Improvements Made:
+
+1. **Automatic User Configuration for ALL System Users**
+   - **New Function**: `conda_configure_all_users()`
+   - **Purpose**: Automatically configures conda for every user on the system during installation
+   - **Scope**: Processes all users with UID ≥ 1000 (regular users) and UID 0 (root)
+   - **Integration**: Called automatically during `conda_init()` after global setup
+
+2. **User-Specific Environment Management**
+   - **Default Location**: `$HOME/.conda/envs` (primary location for user environments)
+   - **Fallback Support**: Users still have access to shared environments at `/home/Shared/conda_envs`
+   - **Package Cache**: User-specific cache at `$HOME/.conda/pkgs` with system fallback
+   - **Ownership**: All user directories properly owned by respective users (`chown user:user`)
+
+3. **Enhanced Configuration Generation**
+   - **New Function**: `conda_generate_user_config_content()`
+   - **Purpose**: Generates user-specific `.condarc` configuration following same pattern as global config
+   - **Features**: Supports both Miniconda and Miniforge channel configurations
+   - **Consistency**: Follows established content generation patterns in the project
+
+4. **safe_insert API Integration for Installation**
+   - **Implementation**: User `.condarc` files now use `safe_insert` API consistently
+   - **Pattern**: `Sudo safe_insert "User conda configuration for $username" "$home/.condarc" "$content"`
+   - **Benefits**: Users see exactly what will be configured and can approve/decline changes
+   - **Consistency**: Matches global configuration approach and other modules (proxy, etc.)
+
+5. **safe_remove API Integration for Removal**
+   - **New Function**: `conda_remove_all_user_configs()`
+   - **Implementation**: User `.condarc` removal now uses `safe_remove` API
+   - **Pattern**: `Sudo safe_remove "User conda configuration for $username" "$home/.condarc" "$content"`
+   - **Safety**: Shows users exactly what conda content will be removed
+   - **Integration**: Called during `conda_remove()` before global cleanup
+
+#### Technical Implementation Details:
+
+**User Directory Structure Created:**
+```
+$HOME/.conda/
+├── envs/           # User's personal environments (primary location)
+├── pkgs/           # User's package cache
+└── ...
+$HOME/.condarc      # User-specific configuration file
+```
+
+**User Configuration Content:**
+```yaml
+# User-specific conda configuration
+envs_dirs:
+  - $HOME/.conda/envs                    # Primary location
+  - /home/Shared/conda_envs              # Shared fallback
+
+pkgs_dirs:
+  - $HOME/.conda/pkgs                    # User cache
+  - /usr/local/miniconda3/pkgs           # System fallback
+
+# Miniforge-specific (if applicable)
+channels:
+  - conda-forge
+  - nodefaults
+```
+
+**User Experience Improvements:**
+- No permission issues when creating/managing environments
+- Default `conda create -n myenv` creates in user's home directory
+- Transparent configuration process with user approval
+- Safe removal with clear preview of what will be deleted
+- Consistent behavior across all user accounts
+
+**Error Handling:**
+- Tracks success/failure for each user during configuration
+- Continues processing even if individual users fail
+- Reports comprehensive summary of results
+- Graceful degradation with detailed logging
+
+#### Functions Added/Modified:
+
+**New Functions:**
+- `conda_generate_user_config_content()` - Generate user-specific config content
+- `conda_configure_all_users()` - Configure conda for all system users
+- `conda_remove_all_user_configs()` - Remove conda config for all users using safe_remove
+
+**Modified Functions:**
+- `conda_init()` - Now includes automatic user configuration
+- `conda_remove()` - Now includes user configuration cleanup using safe_remove
+
+**Exported Functions:**
+- Added exports for `conda_configure_all_users` and `conda_remove_all_user_configs`
+
+#### Benefits Achieved:
+
+1. **Zero-Configuration User Experience**: Users can immediately use conda without manual setup
+2. **Permission-Free Environment Management**: No sudo required for personal environments
+3. **Safe Configuration Management**: All changes use safe_insert/safe_remove APIs
+4. **Consistent Project Patterns**: Follows established conventions for content generation and safe operations
+5. **Comprehensive User Coverage**: All valid system users automatically configured
+6. **Transparent Operations**: Users see and approve all configuration changes
+
+This enhancement ensures that conda installation provides an optimal out-of-the-box experience for all users while maintaining the safety and transparency standards established throughout the project.

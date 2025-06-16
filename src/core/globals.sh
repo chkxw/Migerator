@@ -400,8 +400,8 @@ SYMLINK_SOURCE[profile]="/usr/local/usr_scripts/ubuntu_configs/profile"
 SYMLINK_TARGET[profile]="$HOME/.profile"
 
 # Pip configuration/
-SYMLINK_SOURCE[pip_china]="/usr/local/usr_scripts/ubuntu_configs/pip.conf"
-SYMLINK_TARGET[pip_china]="$HOME/.pip/pip.conf"
+SYMLINK_SOURCE[pip]="/usr/local/usr_scripts/ubuntu_configs/pip.conf"
+SYMLINK_TARGET[pip]="$HOME/.pip/pip.conf"
 
 # Thunderbird message filter rules
 SYMLINK_SOURCE[msgfilter]="/usr/local/usr_scripts/ubuntu_configs/msgFilterRules.dat"

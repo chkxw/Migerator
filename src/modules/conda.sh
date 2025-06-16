@@ -72,6 +72,38 @@ channels:
     echo "$content"
 }
 
+# Function to generate user-specific conda config content
+# Args: $1 - user home directory, $2 - use miniforge (true/false)
+# Returns: configuration content as a string
+conda_generate_user_config_content() {
+    local user_home="$1"
+    local use_miniforge="$2"
+    local conda_path="${CONDA_CONFIG[path]}"
+    local conda_env_path="${CONDA_CONFIG[env_path]}"
+    
+    local content="# User-specific conda configuration
+envs_dirs:
+  - ${user_home}/.conda/envs
+  - ${conda_env_path}  # Fallback to shared environments
+
+# Package cache directory
+pkgs_dirs:
+  - ${user_home}/.conda/pkgs
+  - ${conda_path}/pkgs  # Fallback to system cache"
+
+    # Add conda-forge channel configuration for Miniforge
+    if [ "$use_miniforge" = "true" ]; then
+        content+="
+
+# Always use conda-forge channel
+channels:
+  - conda-forge
+  - nodefaults"
+    fi
+
+    echo "$content"
+}
+
 # Function to download and install conda (miniconda or miniforge)
 # Args: $1 - conda type (miniconda or miniforge)
 # Returns: 0 on success, 1 on failure
@@ -174,8 +206,121 @@ conda_init() {
         return 1
     fi
     
+    # Configure conda for all users on the system
+    log_info "Configuring conda for all users" "$MODULE_NAME"
+    if ! conda_configure_all_users; then
+        log_warning "Failed to configure conda for all users" "$MODULE_NAME"
+    fi
+    
     log_info "Conda initialized for all users" "$MODULE_NAME"
     return 0
+}
+
+# Function to configure conda for all users on the system
+# Returns: 0 on success, 1 on failure
+conda_configure_all_users() {
+    local conda_path="${CONDA_CONFIG[path]}"
+    
+    log_info "Configuring conda for all users on the system" "$MODULE_NAME"
+    
+    # Get all users with valid home directories
+    local users_configured=0
+    local users_failed=0
+    
+    # Process all users from /etc/passwd with UID >= 1000 (regular users) or UID 0 (root)
+    while IFS=: read -r username password uid gid gecos home shell <&3; do
+        # Skip system users (except root) and users without valid home directories
+        if [[ ( "$uid" -ge 1000 || "$uid" -eq 0 ) && -d "$home" && "$shell" != "/usr/sbin/nologin" && "$shell" != "/bin/false" ]]; then
+            log_debug "Configuring conda for user: $username (UID: $uid, Home: $home)" "$MODULE_NAME"
+            
+            # Create .conda directory for the user
+            local user_conda_dir="$home/.conda"
+            Sudo mkdir -p "$user_conda_dir"
+            Sudo mkdir -p "$user_conda_dir/envs"
+            Sudo mkdir -p "$user_conda_dir/pkgs"
+            
+            # Set proper ownership
+            Sudo chown -R "$username:$username" "$user_conda_dir"
+            
+            # Create user-specific conda configuration
+            local user_condarc="$home/.condarc"
+            local use_miniforge=false
+            [ "${CONDA_CONFIG[type]}" = "miniforge" ] && use_miniforge=true
+            local user_config_content=$(conda_generate_user_config_content "$home" "$use_miniforge")
+            
+            # Write the configuration file using safe_insert
+            if ! Sudo safe_insert "User conda configuration for $username" "$user_condarc" "$user_config_content"; then
+                log_warning "Failed to create conda configuration for user: $username" "$MODULE_NAME"
+                ((users_failed++))
+                continue
+            fi
+            
+            # Ensure proper ownership after safe_insert
+            Sudo chown "$username:$username" "$user_condarc"
+            
+            ((users_configured++))
+            log_info "Configured conda for user: $username" "$MODULE_NAME"
+        fi
+    done 3< /etc/passwd
+    
+    if [ $users_failed -gt 0 ]; then
+        log_warning "Conda configured for $users_configured users, $users_failed failed" "$MODULE_NAME"
+        return 1
+    else
+        log_info "Conda configured for $users_configured users" "$MODULE_NAME"
+        return 0
+    fi
+}
+
+# Function to remove conda configuration for all users
+# Returns: 0 on success, 1 on failure
+conda_remove_all_user_configs() {
+    log_info "Removing conda configuration for all users" "$MODULE_NAME"
+    
+    local users_processed=0
+    local users_failed=0
+    
+    # Process all users from /etc/passwd with UID >= 1000 (regular users) or UID 0 (root)
+    while IFS=: read -r username password uid gid gecos home shell <&3; do
+        # Skip system users (except root) and users without valid home directories
+        if [[ ( "$uid" -ge 1000 || "$uid" -eq 0 ) && -d "$home" && "$shell" != "/usr/sbin/nologin" && "$shell" != "/bin/false" ]]; then
+            local user_condarc="$home/.condarc"
+            
+            if [ -f "$user_condarc" ]; then
+                log_debug "Removing conda configuration for user: $username" "$MODULE_NAME"
+                
+                # Generate the same content that was used to create the file
+                local use_miniforge=false
+                [ "${CONDA_CONFIG[type]}" = "miniforge" ] && use_miniforge=true
+                local user_config_content=$(conda_generate_user_config_content "$home" "$use_miniforge")
+                
+                # Use safe_remove to remove the configuration
+                if ! Sudo safe_remove "User conda configuration for $username" "$user_condarc" "$user_config_content"; then
+                    log_warning "Failed to remove conda configuration for user: $username" "$MODULE_NAME"
+                    ((users_failed++))
+                else
+                    log_info "Removed conda configuration for user: $username" "$MODULE_NAME"
+                fi
+            fi
+            
+            # Remove user conda directories
+            local user_conda_dir="$home/.conda"
+            if [ -d "$user_conda_dir" ]; then
+                log_debug "Removing conda directory for user: $username" "$MODULE_NAME"
+                Sudo rm -rf "$user_conda_dir" || true
+            fi
+            
+            ((users_processed++))
+        fi
+    done 3< /etc/passwd
+    
+    if [ $users_failed -gt 0 ]; then
+        log_warning "Processed $users_processed users, $users_failed failed" "$MODULE_NAME"
+        return 1
+    else
+        log_info "Successfully processed conda removal for $users_processed users" "$MODULE_NAME"
+        return 0
+    fi
 }
 
 # Function to remove conda installation and configuration
@@ -184,6 +329,10 @@ conda_init() {
 conda_remove() {
     local conda_path="$1"
     log_debug "Removing conda installation and configuration" "$MODULE_NAME"
+    
+    # Remove user configurations first
+    log_info "Removing user conda configurations" "$MODULE_NAME"
+    conda_remove_all_user_configs || true
     
     # Remove conda directory
     if [ -d "$conda_path" ]; then
@@ -200,6 +349,15 @@ conda_remove() {
     Sudo rm -f "/etc/profile.d/mamba.sh" || true
     
     # Remove conda configuration
+    if [ -f "/etc/conda/.condarc" ]; then
+        local conda_env_path="${CONDA_CONFIG[env_path]}"
+        local use_miniforge=false
+        [ "${CONDA_CONFIG[type]}" = "miniforge" ] && use_miniforge=true
+        local config_content=$(conda_generate_config_content "$conda_env_path" "$use_miniforge")
+        Sudo safe_remove "Global conda configurations" "/etc/conda/.condarc" "$config_content" || true
+    fi
+    
+    # Remove conda directory
     Sudo rm -rf "/etc/conda" || true
     
     log_info "Conda installation and configuration removed" "$MODULE_NAME"
@@ -453,5 +611,9 @@ MODULE_COMMANDS=(
     "conda_main:Install and configure Conda (Miniconda/Miniforge)"
 )
 export MODULE_COMMANDS
+
+# Export the new functions for use in other modules
+export -f conda_configure_all_users
+export -f conda_remove_all_user_configs
 
 log_debug "Conda module loaded" "conda"

@@ -296,7 +296,7 @@ git_repos_main() {
     # Parse arguments
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            clone|update|remove)
+            clone|update|remove|list)
                 command="$1"
                 shift
                 ;;
@@ -342,13 +342,14 @@ git_repos_main() {
     
     # Show help if requested or no command specified
     if [[ "$show_help" = "true" ]] || [[ -z "$command" ]]; then
-        cat <<-EOF
+        help_text=$(cat << EOF
 Usage: git_repos_main [command] [options]
 
 Commands:
   clone         Clone repositories defined in globals.sh
   update        Update existing repositories
   remove        Remove cloned repositories
+  list          List available repositories
 
 Options:
   --url URL     Clone single repository (requires --dir)
@@ -385,7 +386,27 @@ Examples:
 
   # Remove all cloned repositories
   git_repos_main remove
+
+Available repositories:
 EOF
+)
+        # Add repositories to the help text
+        local repo_list=$(global_vars git_repos 2>/dev/null)
+        if [[ -n "$repo_list" ]]; then
+            for repo_name in $repo_list; do
+                local url="${GIT_REPO_URL[$repo_name]}"
+                local dir="${GIT_REPO_DIR[$repo_name]}"
+                local branch="${GIT_REPO_BRANCH[$repo_name]:-main}"
+                help_text="$help_text
+  $repo_name - $url -> $dir (branch: $branch)"
+            done
+        else
+            help_text="$help_text
+  No repositories configured in globals.sh"
+        fi
+        
+        # Output the help text
+        echo "$help_text"
         # Restore previous module context
         MODULE_NAME="$PREV_MODULE_NAME"
         MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
@@ -444,6 +465,31 @@ EOF
                 fi
             fi
             ;;
+            
+        list)
+            list_text="Available repositories:"
+            local repo_list=$(global_vars git_repos)
+            if [[ -n "$repo_list" ]]; then
+                for repo_name in $repo_list; do
+                    local url="${GIT_REPO_URL[$repo_name]}"
+                    local dir="${GIT_REPO_DIR[$repo_name]}"
+                    local branch="${GIT_REPO_BRANCH[$repo_name]:-main}"
+                    list_text="$list_text
+  $repo_name - $url -> $dir (branch: $branch)"
+                done
+            else
+                list_text="$list_text
+  No repositories configured in globals.sh"
+            fi
+            echo "$list_text"
+            
+            # Restore previous module context
+            MODULE_NAME="$PREV_MODULE_NAME"
+            MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+            MODULE_VERSION="$PREV_MODULE_VERSION"
+            
+            return 0
+            ;;
     esac
     
     if [[ $result -eq 0 ]]; then
@@ -466,6 +512,7 @@ export -f git_repos_main
 # Module metadata
 MODULE_COMMANDS=(
     "git_repos_main:Clone and manage personal git repositories"
+    "git_repos_main list:List available repositories"
 )
 export MODULE_COMMANDS
 

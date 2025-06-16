@@ -391,6 +391,71 @@ handle_wine_processing() {
     esac
 }
 
+# Function to handle Thunderbird special pre/post processing
+# Usage: handle_thunderbird_processing operation [install|remove]
+# Returns: 0 on success, 1 on failure
+handle_thunderbird_processing() {
+    local operation="$1"
+    log_debug "Handling Thunderbird $operation pre/post processing" "$MODULE_NAME"
+    
+    case "$operation" in
+        install)
+            # Create APT preferences to prioritize PPA version over snap
+            log_info "Configuring APT preferences for Thunderbird" "$MODULE_NAME"
+            local preferences_file="/etc/apt/preferences.d/thunderbird"
+            
+            # Since safe_insert uses check_and_add_lines which appends lines,
+            # and we need to write a complete file, we'll create it directly
+            # First remove any existing file to ensure clean content
+            if [[ -f "$preferences_file" ]]; then
+                log_debug "Removing existing Thunderbird preferences file" "$MODULE_NAME"
+                Sudo rm -f "$preferences_file"
+            fi
+            
+            # Content for the preferences file
+            local preferences_content="Package: *
+Pin: release o=LP-PPA-mozillateam
+Pin-Priority: 1001
+
+Package: thunderbird
+Pin: version 2:1snap*
+Pin-Priority: -1"
+            
+            # Use safe_insert to create the file with proper permissions
+            if Sudo safe_insert "Thunderbird APT preferences" "$preferences_file" "$preferences_content"; then
+                log_info "Thunderbird APT preferences configured successfully" "$MODULE_NAME"
+                # Ensure proper permissions
+                Sudo chmod 644 "$preferences_file"
+                Sudo chown root:root "$preferences_file"
+            else
+                log_warning "Failed to configure Thunderbird APT preferences" "$MODULE_NAME"
+                return 1
+            fi
+            
+            return 0
+            ;;
+        remove)
+            # Remove APT preferences file
+            local preferences_file="/etc/apt/preferences.d/thunderbird"
+            if [[ -f "$preferences_file" ]]; then
+                log_info "Removing Thunderbird APT preferences" "$MODULE_NAME"
+                # safe_remove expects content to remove, but we want to remove the entire file
+                # So we'll use direct removal
+                if Sudo rm -f "$preferences_file"; then
+                    log_info "Thunderbird APT preferences removed" "$MODULE_NAME"
+                else
+                    log_warning "Failed to remove Thunderbird APT preferences" "$MODULE_NAME"
+                fi
+            fi
+            return 0
+            ;;
+        *)
+            log_error "Unknown operation: $operation" "$MODULE_NAME"
+            return 1
+            ;;
+    esac
+}
+
 # Function to handle package-specific pre/post processing
 # Usage: handle_package_processing nickname operation
 # Returns: 0 on success, 1 on failure
@@ -427,6 +492,10 @@ handle_package_processing() {
             ;;
         wine)
             handle_wine_processing "$operation"
+            return $?
+            ;;
+        thunderbird)
+            handle_thunderbird_processing "$operation"
             return $?
             ;;
         *)
@@ -755,7 +824,7 @@ packages_main() {
     local packages=()
     local set_name=""
     local purge="false"
-    local remove_repos="false"
+    local keep_repos="false"
     local autoremove="false"
     local show_help="false"
     
@@ -781,8 +850,8 @@ packages_main() {
                 purge="true"
                 shift
                 ;;
-            --remove-repos)
-                remove_repos="true"
+            --keep-repos)
+                keep_repos="true"
                 shift
                 ;;
             --autoremove)
@@ -813,8 +882,13 @@ packages_main() {
     # Store values locally instead of in global configuration
     local purge_option="$purge"
     local auto_remove_option="${autoremove:-true}" # Default to true
-    local remove_repos_option="false" # Don't remove repos by default
-    log_debug "Using purge: $purge_option, auto_remove: $auto_remove_option" "$MODULE_NAME"
+    # Remove repos by default, unless --keep-repos is specified
+    if [[ "$keep_repos" == "true" ]]; then
+        remove_repos_option="false"
+    else
+        remove_repos_option="true"
+    fi
+    log_debug "Using purge: $purge_option, auto_remove: $auto_remove_option, remove_repos: $remove_repos_option" "$MODULE_NAME"
     
     # Show help message
     if [ "$show_help" = "true" ]; then
@@ -829,7 +903,7 @@ Commands:
 
 Options:
   --purge                       - Purge packages when removing
-  --remove-repos                - Remove repositories after package removal
+  --keep-repos                  - Keep repositories after package removal (default: remove)
   --autoremove                  - Run autoremove after package removal
   --help, -h                    - Show this help message
 

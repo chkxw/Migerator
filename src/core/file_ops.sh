@@ -281,9 +281,9 @@ safe_insert() {
         rm "$empty_file" 2>/dev/null || true
         return 0
     else
-        # Skip confirmation if CONFIRM_ALL is set
+        # Skip confirmation if SCRIPT_CONFIG[confirm_all] is set
         if [ "${SCRIPT_CONFIG[confirm_all]}" = "true" ]; then
-            log_debug "Auto-applying changes due to CONFIRM_ALL=true" "safe_insert"
+            log_debug "Auto-applying changes due to SCRIPT_CONFIG[confirm_all]=true" "safe_insert"
             mkdir -p $(dirname "$filename")
             cat "$temp_file" > "$filename"
             log_info "Changes applied automatically for $usage" "safe_insert"
@@ -366,9 +366,9 @@ safe_remove() {
         rm "$temp_file" 2>/dev/null || true
         return 0
     else
-        # Skip confirmation if CONFIRM_ALL is set
+        # Skip confirmation if SCRIPT_CONFIG[confirm_all] is set
         if [ "${SCRIPT_CONFIG[confirm_all]}" = "true" ]; then
-            log_debug "Auto-applying changes due to CONFIRM_ALL=true" "safe_remove"
+            log_debug "Auto-applying changes due to SCRIPT_CONFIG[confirm_all]=true" "safe_remove"
             cat "$temp_file" > "$filename"
             log_info "Changes applied automatically for $usage" "safe_remove"
         else

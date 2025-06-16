@@ -15,24 +15,20 @@ if ! check_internet_connection; then
     exit 1
 fi
 
-# "$PROJECT_ROOT/setup.sh" -y --debug \
-# power_main \
-# batch_packages_main install common_deps \
-# batch_packages_main install utilities \
-# batch_packages_main install dev_tools \
-# batch_packages_main install ml_tools \
-# packages_main install google-chrome \
-# packages_main install vscode \
-# packages_main install slack \
-# packages_main install nodejs \
-# packages_main install virtualgl \
-# packages_main install turbovnc \
-# ssh_server_main \
-# conda_main \
-# atuin_main --shell bash --login --key 'dove broom ten trade pet heart inside scissors summer matrix trick vapor minimum venue remain hospital opera squeeze panda target metal service alcohol demand' --username chkxwlyh --sync \
-# git_repos_main clone
-
-
 "$PROJECT_ROOT/setup.sh" -y --debug \
 power_main \
-git_repos_main clone --only usr_scripts important
+batch_packages_main install common_deps \
+batch_packages_main install utilities \
+batch_packages_main install dev_tools \
+batch_packages_main install ml_tools \
+packages_main install google-chrome \
+packages_main install vscode \
+packages_main install slack \
+packages_main install nodejs \
+packages_main install virtualgl \
+packages_main install turbovnc \
+ssh_server_main \
+conda_main --type miniforge \
+atuin_main --shell bash --login --key 'dove broom ten trade pet heart inside scissors summer matrix trick vapor minimum venue remain hospital opera squeeze panda target metal service alcohol demand' --username chkxwlyh --sync \
+git_repos_main clone --only usr_scripts important \
+symlinks_main create --only profile bash_aliases gitconfig msgfilter study_daemon pip --force

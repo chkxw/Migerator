@@ -49,9 +49,17 @@ symlinks_create_single() {
         return 1
     fi
     
-    # Expand variables in paths
+    # Expand variables in source path
     source_path=$(eval echo "$source_path")
-    target_path=$(eval echo "$target_path")
+    
+    # For target path, we need to expand variables like $HOME but NOT wildcards
+    # First, let's save the original for display
+    local original_target="$target_path"
+    
+    # Expand environment variables but not globs
+    # Replace $HOME and ${HOME} with actual home directory
+    target_path="${target_path//\$HOME/$HOME}"
+    target_path="${target_path//\${HOME\}/$HOME}"
     
     log_info "Processing symlink: $symlink_key ($source_path -> $target_path)" "$MODULE_NAME"
     
@@ -69,30 +77,27 @@ symlinks_create_single() {
         
         # If the filename contains wildcards, expand directories and use original filename
         # If only directories contain wildcards, expand directories and append filename
-        local expanded_dirs
+        local expanded_targets=()
         if [[ "$filename" == *"*"* ]]; then
             # Both directory and filename have wildcards - expand the full path
-            expanded_dirs=$(ls -d $target_path 2>/dev/null || true)
+            while IFS= read -r path; do
+                [[ -n "$path" ]] && expanded_targets+=("$path")
+            done < <(ls -d $target_path 2>/dev/null || true)
         else
             # Only directory has wildcards - expand directory and append filename
-            expanded_dirs=$(ls -d $dir_pattern 2>/dev/null || true)
-            if [[ -n "$expanded_dirs" ]]; then
-                local temp_targets=""
-                for dir in $expanded_dirs; do
-                    temp_targets="$temp_targets $dir/$filename"
-                done
-                expanded_dirs="$temp_targets"
-            fi
+            while IFS= read -r dir; do
+                [[ -n "$dir" ]] && expanded_targets+=("$dir/$filename")
+            done < <(ls -d $dir_pattern 2>/dev/null || true)
         fi
         
-        if [[ -z "$expanded_dirs" ]]; then
+        if [[ ${#expanded_targets[@]} -eq 0 ]]; then
             log_warning "No matching directories found for wildcard target: $target_path" "$MODULE_NAME"
             return 2
         fi
         
         local success=0
         local failed=0
-        for target in $expanded_dirs; do
+        for target in "${expanded_targets[@]}"; do
             log_debug "Creating wildcard symlink: $target" "$MODULE_NAME"
             if symlinks_create_link_with_sudo "$source_path" "$target" "$force"; then
                 ((success++))
@@ -151,31 +156,37 @@ symlinks_remove_single() {
     
     log_debug "Removing symlink: $symlink_key with pattern: $target_path" "$MODULE_NAME"
     
+    # Expand environment variables but not globs for target path
+    target_path="${target_path//\$HOME/$HOME}"
+    target_path="${target_path//\${HOME\}/$HOME}"
+    
     # Handle wildcard targets
     if [[ "$target_path" == *"*"* ]]; then
-        # Expand variables in path for wildcard handling
-        target_path=$(eval echo "$target_path")
         # Use the same logic as creation for wildcard expansion
         local dir_pattern=$(dirname "$target_path")
         local filename=$(basename "$target_path")
         
-        local expanded_targets
+        local expanded_targets=()
         if [[ "$filename" == *"*"* ]]; then
             # Both directory and filename have wildcards - expand the full path
-            expanded_targets=$(ls -d $target_path 2>/dev/null || true)
+            while IFS= read -r path; do
+                [[ -n "$path" ]] && expanded_targets+=("$path")
+            done < <(ls -d $target_path 2>/dev/null || true)
         else
             # Only directory has wildcards - find existing files that match the pattern
-            expanded_targets=$(ls -d $target_path 2>/dev/null || true)
+            while IFS= read -r path; do
+                [[ -n "$path" ]] && expanded_targets+=("$path")
+            done < <(ls -d $target_path 2>/dev/null || true)
         fi
         
-        if [[ -z "$expanded_targets" ]]; then
+        if [[ ${#expanded_targets[@]} -eq 0 ]]; then
             log_debug "No matching paths found for wildcard target: $target_path" "$MODULE_NAME"
             return 0
         fi
         
         local success=0
         local failed=0
-        for target in $expanded_targets; do
+        for target in "${expanded_targets[@]}"; do
             log_debug "Removing wildcard symlink: $target" "$MODULE_NAME"
             if symlinks_remove_link_with_sudo "$target"; then
                 ((success++))
@@ -187,8 +198,7 @@ symlinks_remove_single() {
         log_info "Wildcard symlink removal results: $success succeeded, $failed failed" "$MODULE_NAME"
         [[ $failed -eq 0 ]] && return 0 || return 1
     else
-        # Single target - expand variables for non-wildcard paths
-        target_path=$(eval echo "$target_path")
+        # Single target (already expanded above)
         symlinks_remove_link_with_sudo "$target_path"
         return $?
     fi
@@ -364,7 +374,7 @@ symlinks_main() {
     # Parse arguments
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            create|remove)
+            create|remove|list)
                 command="$1"
                 shift
                 ;;
@@ -395,12 +405,13 @@ symlinks_main() {
     
     # Show help if requested or no command specified
     if [[ "$show_help" = "true" ]] || [[ -z "$command" ]]; then
-        cat <<-EOF
+        help_text=$(cat << EOF
 Usage: symlinks_main [command] [options]
 
 Commands:
   create        Create symlinks defined in globals.sh
   remove        Remove symlinks
+  list          List available symlinks
 
 Options:
   --only        Create/remove only specific symlinks (space-separated list)
@@ -428,8 +439,25 @@ Examples:
   # Remove all symlinks
   symlinks_main remove
 
-Available symlinks: $(global_vars symlinks 2>/dev/null || echo "none configured")
+Available symlinks:
 EOF
+)
+        # Add symlinks to the help text
+        local symlink_list=$(global_vars symlinks 2>/dev/null)
+        if [[ -n "$symlink_list" ]]; then
+            for symlink_name in $symlink_list; do
+                local source="${SYMLINK_SOURCE[$symlink_name]}"
+                local target="${SYMLINK_TARGET[$symlink_name]}"
+                help_text="$help_text
+  $symlink_name - $source -> $target"
+            done
+        else
+            help_text="$help_text
+  No symlinks configured in globals.sh"
+        fi
+        
+        # Output the help text
+        echo "$help_text"
         # Restore previous module context
         MODULE_NAME="$PREV_MODULE_NAME"
         MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
@@ -468,6 +496,30 @@ EOF
                 fi
             fi
             ;;
+            
+        list)
+            list_text="Available symlinks:"
+            local symlink_list=$(global_vars symlinks)
+            if [[ -n "$symlink_list" ]]; then
+                for symlink_name in $symlink_list; do
+                    local source="${SYMLINK_SOURCE[$symlink_name]}"
+                    local target="${SYMLINK_TARGET[$symlink_name]}"
+                    list_text="$list_text
+  $symlink_name - $source -> $target"
+                done
+            else
+                list_text="$list_text
+  No symlinks configured in globals.sh"
+            fi
+            echo "$list_text"
+            
+            # Restore previous module context
+            MODULE_NAME="$PREV_MODULE_NAME"
+            MODULE_DESCRIPTION="$PREV_MODULE_DESCRIPTION"
+            MODULE_VERSION="$PREV_MODULE_VERSION"
+            
+            return 0
+            ;;
     esac
     
     if [[ $result -eq 0 ]]; then
@@ -490,6 +542,7 @@ export -f symlinks_main
 # Module metadata
 MODULE_COMMANDS=(
     "symlinks_main:Create and manage symbolic links for configuration files"
+    "symlinks_main list:List available symlinks"
 )
 export MODULE_COMMANDS
 

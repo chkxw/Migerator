@@ -15,9 +15,9 @@ confirm() {
     local default_response="$2"
     local prompt_suffix="(Y/N)"
     
-    # Check if CONFIRM_ALL environment variable is set to skip confirmation
-    if [ "${CONFIRM_ALL:-false}" = "true" ]; then
-        log_debug "Auto-confirming due to CONFIRM_ALL=true" "confirm"
+    # Check if SCRIPT_CONFIG[confirm_all] is set to skip confirmation
+    if [ "${SCRIPT_CONFIG[confirm_all]:-false}" = "true" ]; then
+        log_debug "Auto-confirming due to SCRIPT_CONFIG[confirm_all]=true" "confirm"
         return 0
     fi
     
