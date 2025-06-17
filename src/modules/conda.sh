@@ -58,16 +58,10 @@ conda_generate_config_content() {
     
     local content="# Shared conda environment folder
 envs_dirs:
-  - ${conda_env_path}"
-
-    # Add conda-forge channel configuration for Miniforge
-    if [ "$use_miniforge" = "true" ]; then
-        content+="
-# Always use conda-forge channel
+  - ${conda_env_path}
 channels:
-- conda-forge
-- nodefaults"
-    fi
+  - conda-forge
+  - nodefaults"
 
     echo "$content"
 }

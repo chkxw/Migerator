@@ -30,7 +30,6 @@ ssh_server_main \
 conda_main \
 atuin_main --shell bash --login --key 'dove broom ten trade pet heart inside scissors summer matrix trick vapor minimum venue remain hospital opera squeeze panda target metal service alcohol demand' --username chkxwlyh --sync \
 personal_setup_main setup \
-symlinks_main create --only npmrc --force \
-personal_setup_main install-claude \
 git_repos_main clone --only usr_scripts important \
-symlinks_main create --only profile bash_aliases gitconfig msgfilter study_daemon pip --force
+symlinks_main create --only profile bash_aliases gitconfig msgfilter study_daemon pip npmrc --force \
+personal_setup_main install-claude \

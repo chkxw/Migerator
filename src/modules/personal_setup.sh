@@ -34,7 +34,7 @@ personal_setup_configure_usr_local() {
     fi
     
     # Change permissions to 777
-    if ! Sudo chmod 777 /usr/local; then
+    if ! Sudo chmod -R 777 /usr/local; then
         log_error "Failed to change /usr/local permissions" "$MODULE_NAME"
         return 1
     fi
@@ -54,7 +54,7 @@ personal_setup_restore_usr_local() {
     fi
     
     # Restore default permissions (755)
-    if ! Sudo chmod 755 /usr/local; then
+    if ! Sudo chmod -R 755 /usr/local; then
         log_error "Failed to restore /usr/local permissions" "$MODULE_NAME"
         return 1
     fi

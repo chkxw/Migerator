@@ -200,7 +200,7 @@ PKG_REPO_BASE_URL[wine]="https://dl.winehq.org/wine-builds/ubuntu"
 PKG_FORMAL_NAME[ffmpeg]="ffmpeg"
 PKG_GPG_KEY_URL[ffmpeg]="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xf4e48910a020e77056748b745738ae8480447ddf"
 PKG_ARCH[ffmpeg]="amd64"
-PKG_VERSION_CODENAME[ffmpeg]="$OS_CODENAME"
+PKG_VERSION_CODENAME[ffmpeg]="jammy"
 PKG_BRANCH[ffmpeg]="main"
 PKG_DEB_SRC[ffmpeg]="true"
 PKG_REPO_BASE_URL[ffmpeg]="https://ppa.launchpadcontent.net/ubuntuhandbook1/ffmpeg6/ubuntu"
@@ -258,6 +258,15 @@ PKG_VERSION_CODENAME[thunderbird]="$OS_CODENAME"
 PKG_BRANCH[thunderbird]="main"
 PKG_DEB_SRC[thunderbird]="true"
 PKG_REPO_BASE_URL[thunderbird]="https://ppa.launchpadcontent.net/mozillateam/ppa/ubuntu"
+
+# Discord
+PKG_FORMAL_NAME[discord]="discord"
+PKG_GPG_KEY_URL[discord]="https://raw.githubusercontent.com/palfrey/discord-apt/refs/heads/main/discord-repo/discord-apt.gpg.asc"
+PKG_ARCH[discord]="amd64"
+PKG_VERSION_CODENAME[discord]="./"
+PKG_BRANCH[discord]=""
+PKG_DEB_SRC[discord]="false"
+PKG_REPO_BASE_URL[discord]="https://palfrey.github.io/discord-apt/debian/"
 
 # Package Groups Definition
 # These are groups of packages for batch installation
@@ -328,6 +337,8 @@ declare -a BA_PKG_DEV_TOOLS=(
     "wget"
     "unzip"
     "p7zip-full"
+    "swig"
+    "cmake"
 )
 export BA_PKG_DEV_TOOLS
 export BA_PKG_DEV_TOOLS_DESCRIPTION="Development Tools"

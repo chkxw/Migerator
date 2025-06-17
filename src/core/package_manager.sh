@@ -72,6 +72,14 @@ parse_package_repo() {
         check_urls+=("$(normalize_url "$repo_base_url/dists/$version_codename/InRelease")")
     fi
     
+    # Special handling for repositories with "./" as distribution (like discord-apt)
+    if [[ "$version_codename" == "./" ]]; then
+        check_urls+=("$(normalize_url "$repo_base_url/./Release")")
+        check_urls+=("$(normalize_url "$repo_base_url/./InRelease")")
+        check_urls+=("$(normalize_url "$repo_base_url/./Packages")")
+        check_urls+=("$(normalize_url "$repo_base_url/./Packages.gz")")
+    fi
+    
     # 3. Try APT-style repo URLs (for packagecloud, etc.)
     if [[ "$repo_base_url" == *packagecloud* ]]; then
         # Add standard packagecloud patterns
@@ -106,8 +114,18 @@ parse_package_repo() {
         log_debug "No accessible URL found, using: $repo_url" "package_manager"
     fi
     
-    # Return values as an array
-    echo "$package_name" "$gpg_key_url" "$arch" "$version_codename" "$branch" "$deb_src" "$repo_url" "$repo_base_url"
+    # Return values as an array using a delimiter that won't appear in the data
+    # Use unit separator (ASCII 31) which is specifically designed for this purpose
+    local delimiter=$'\x1F'
+    printf "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n" \
+        "$package_name" "$delimiter" \
+        "$gpg_key_url" "$delimiter" \
+        "$arch" "$delimiter" \
+        "$version_codename" "$delimiter" \
+        "$branch" "$delimiter" \
+        "$deb_src" "$delimiter" \
+        "$repo_url" "$delimiter" \
+        "$repo_base_url"
 }
 
 # Function to check if a package repository is available
@@ -115,13 +133,13 @@ parse_package_repo() {
 # Returns: 0 if available, 1 if not
 check_package_repo_available() {
     local nickname="$1"
-    read -r package_name gpg_key_url arch version_codename branch deb_src repo_url repo_base_url <<< "$(parse_package_repo "$nickname")"
+    IFS=$'\x1F' read -r package_name gpg_key_url arch version_codename branch deb_src repo_url repo_base_url <<< "$(parse_package_repo "$nickname")"
     
-    log_debug "Checking if package repo is available: $nickname" "package_manager"
+    log_debug "Checking if package repo is available: $nickname" "check_package_repo_available"
     
     # Handle nonexistent repositories
     if [ -z "$repo_url" ]; then
-        log_error "Unknown package repository: $nickname" "package_manager"
+        log_error "Unknown package repository: $nickname" "check_package_repo_available"
         return 1
     fi
     
@@ -134,15 +152,15 @@ check_package_repo_available() {
     local test_repo_entry="$(generate_repo_entry_template "$nickname" "dummy.gpg" | sed 's/\[.*signed-by=[^]]*\]/[trusted=yes]/')"
     
     if [ -z "$test_repo_entry" ]; then
-        log_error "Failed to generate test repository entry for $nickname" "package_manager"
+        log_error "Failed to generate test repository entry for $nickname" "check_package_repo_available"
         return 1
     fi
     
     # Write temporary sources.list file
     echo "$test_repo_entry" > "$temp_sources"
     
-    log_debug "Testing repository with apt-get update --print-uris" "package_manager"
-    log_debug "Test repository entry: $test_repo_entry" "package_manager"
+    log_debug "Testing repository with apt-get update --print-uris" "check_package_repo_available"
+    log_debug "Test repository entry: $test_repo_entry" "check_package_repo_available"
     
     # Create temp directory for lists
     mkdir -p "$temp_lists_dir"
@@ -168,20 +186,20 @@ check_package_repo_available() {
     if [ $result -eq 0 ]; then
         # Check if apt actually found valid URIs to download
         # The output format is: 'URL' local_filename size
-        if echo "$apt_output" | grep -qE "^'(https?|ftp)://.*/(InRelease|Release|Packages\.(gz|xz|bz2)?)'" ; then
-            log_debug "Repository is available: $nickname" "package_manager"
+        if echo "$apt_output" | grep -qE "^'(https?|ftp)://.*/(InRelease|Release|Packages(\.(gz|xz|bz2))?)'|^'(https?|ftp)://.*/\.\/(InRelease|Release|Packages(\.(gz|xz|bz2))?)'" ; then
+            log_debug "Repository is available: $nickname" "check_package_repo_available"
             return 0
         else
-            log_warning "Repository returned no valid URIs: $nickname" "package_manager"
+            log_warning "Repository returned no valid URIs: $nickname" "check_package_repo_available"
             return 1
         fi
     else
         # Extract meaningful error message if available
         local error_msg=$(echo "$apt_output" | grep -E "(Failed|404|Cannot|Unable)" | head -1)
         if [ -n "$error_msg" ]; then
-            log_warning "Repository check failed for $nickname: $error_msg" "package_manager"
+            log_warning "Repository check failed for $nickname: $error_msg" "check_package_repo_available"
         else
-            log_warning "Package repository is not available: $nickname" "package_manager"
+            log_warning "Package repository is not available: $nickname" "check_package_repo_available"
         fi
         return 1
     fi
@@ -193,7 +211,7 @@ check_package_repo_available() {
 generate_repo_entry_template() {
     local nickname="$1"
     local gpg_key_file="$2"
-    read -r package_name gpg_key_url arch version_codename branch deb_src repo_url repo_base_url <<< "$(parse_package_repo "$nickname")"
+    IFS=$'\x1F' read -r package_name gpg_key_url arch version_codename branch deb_src repo_url repo_base_url <<< "$(parse_package_repo "$nickname")"
     
     log_debug "Generating repo entry template for $nickname" "package_manager"
     
@@ -203,7 +221,12 @@ generate_repo_entry_template() {
     fi
     
     # Create the basic template
-    local template="deb [arch=$arch signed-by=$gpg_key_file] $repo_base_url $version_codename $branch"
+    local template="deb [arch=$arch signed-by=$gpg_key_file] $repo_base_url $version_codename"
+    
+    # Only add branch if it's not empty
+    if [ -n "$branch" ]; then
+        template="$template $branch"
+    fi
     
     echo "$template"
 }
@@ -213,7 +236,7 @@ generate_repo_entry_template() {
 # Returns: 0 on success, 1 on failure
 register_package_repo() {
     local nickname="$1"
-    read -r package_name gpg_key_url arch version_codename branch deb_src repo_url repo_base_url <<< "$(parse_package_repo "$nickname")"
+    IFS=$'\x1F' read -r package_name gpg_key_url arch version_codename branch deb_src repo_url repo_base_url <<< "$(parse_package_repo "$nickname")"
     
     log_debug "Registering package repository: $nickname" "package_manager"
     
@@ -297,7 +320,7 @@ install_package() {
     shift
     local additional_packages=("$@")
     
-    read -r package_name gpg_key_url arch version_codename branch deb_src repo_url repo_base_url <<< "$(parse_package_repo "$nickname")"
+    IFS=$'\x1F' read -r package_name gpg_key_url arch version_codename branch deb_src repo_url repo_base_url <<< "$(parse_package_repo "$nickname")"
     
     log_debug "Installing package: $nickname ($package_name)" "package_manager"
     

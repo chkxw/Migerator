@@ -37,7 +37,9 @@ idle-delay=uint32 0"
 # Returns: configuration content as a string
 power_generate_suspend_content() {
     local content="[org/gnome/settings-daemon/plugins/power]
-sleep-inactive-ac-type='nothing'"
+sleep-inactive-ac-type='nothing'
+idle-dim=false
+power-saver-profile-on-low-battery=false"
 
     echo "$content"
 }
