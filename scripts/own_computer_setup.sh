@@ -31,5 +31,5 @@ conda_main \
 atuin_main --shell bash --login --key 'dove broom ten trade pet heart inside scissors summer matrix trick vapor minimum venue remain hospital opera squeeze panda target metal service alcohol demand' --username chkxwlyh --sync \
 personal_setup_main setup \
 git_repos_main clone --only usr_scripts important \
-symlinks_main create --only profile bash_aliases gitconfig msgfilter study_daemon pip npmrc --force \
+symlinks_main create --only profile bash_aliases gitconfig msgfilter study_daemon pip npmrc atuin_config fcitx5_user_dict fcitx5_user_history fcitx5_themes --force \
 personal_setup_main install-claude \

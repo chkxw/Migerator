@@ -21,6 +21,7 @@ USER_CONFIG[default_password]="badgerrl"
 USER_CONFIG[admin]="badgerrl"
 USER_CONFIG[shared_group]="rllab"
 USER_CONFIG[shared_dir]="/home/Shared"
+USER_CONFIG[usr_scripts_path]="/usr/local/usr_scripts"
 USER_CONFIG[net_shared_dir]="NetShared"
 
 # Conda configuration
@@ -268,6 +269,15 @@ PKG_BRANCH[discord]=""
 PKG_DEB_SRC[discord]="false"
 PKG_REPO_BASE_URL[discord]="https://palfrey.github.io/discord-apt/debian/"
 
+# NeteaseCloudMusicGtk4
+PKG_FORMAL_NAME[ncm4]="netease-cloud-music-gtk"
+PKG_GPG_KEY_URL[ncm4]="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x61D88826EC7C7943D0D5DC6039B3993AD9F29276"
+PKG_ARCH[ncm4]="amd64"
+PKG_VERSION_CODENAME[ncm4]="$OS_CODENAME"
+PKG_BRANCH[ncm4]="main"
+PKG_DEB_SRC[ncm4]="true"
+PKG_REPO_BASE_URL[ncm4]="https://ppa.launchpadcontent.net/gmg137/ncm/ubuntu"
+
 # Package Groups Definition
 # These are groups of packages for batch installation
 
@@ -384,7 +394,7 @@ declare -A GIT_REPO_SSH_KEY
 # GIT_REPO_SSH_KEY[myproject]=""
 
 GIT_REPO_URL[usr_scripts]="git@gitee.com:chkxwlyh/usr_scripts.git"
-GIT_REPO_DIR[usr_scripts]="/usr/local/usr_scripts"
+GIT_REPO_DIR[usr_scripts]="${USER_CONFIG[usr_scripts_path]}"
 GIT_REPO_BRANCH[usr_scripts]="master"
 GIT_REPO_SSH_KEY[usr_scripts]="$HOME/.ssh/id_ed25519"
 
@@ -399,33 +409,48 @@ declare -A SYMLINK_SOURCE
 declare -A SYMLINK_TARGET
 
 # Bash aliases
-SYMLINK_SOURCE[bash_aliases]="/usr/local/usr_scripts/ubuntu_configs/bash_aliases.sh"
+SYMLINK_SOURCE[bash_aliases]="${USER_CONFIG[usr_scripts_path]}/ubuntu_configs/bash_aliases.sh"
 SYMLINK_TARGET[bash_aliases]="$HOME/.bash_aliases"
 
 # Git configuration
-SYMLINK_SOURCE[gitconfig]="/usr/local/usr_scripts/ubuntu_configs/gitconfig"
+SYMLINK_SOURCE[gitconfig]="${USER_CONFIG[usr_scripts_path]}/ubuntu_configs/gitconfig"
 SYMLINK_TARGET[gitconfig]="$HOME/.gitconfig"
 
 # Profile
-SYMLINK_SOURCE[profile]="/usr/local/usr_scripts/ubuntu_configs/profile"
+SYMLINK_SOURCE[profile]="${USER_CONFIG[usr_scripts_path]}/ubuntu_configs/profile"
 SYMLINK_TARGET[profile]="$HOME/.profile"
 
 # Pip configuration/
-SYMLINK_SOURCE[pip]="/usr/local/usr_scripts/ubuntu_configs/pip.conf"
+SYMLINK_SOURCE[pip]="${USER_CONFIG[usr_scripts_path]}/ubuntu_configs/pip.conf"
 SYMLINK_TARGET[pip]="$HOME/.pip/pip.conf"
 
 # Thunderbird message filter rules
-SYMLINK_SOURCE[msgfilter]="/usr/local/usr_scripts/ubuntu_configs/msgFilterRules.dat"
+SYMLINK_SOURCE[msgfilter]="${USER_CONFIG[usr_scripts_path]}/ubuntu_configs/msgFilterRules.dat"
 SYMLINK_TARGET[msgfilter]="$HOME/.thunderbird/*/ImapMail/*/msgFilterRules.dat"
 
 # Study daemon service
-SYMLINK_SOURCE[study_daemon]="/usr/local/usr_scripts/ubuntu_configs/study_daemon.service"
+SYMLINK_SOURCE[study_daemon]="${USER_CONFIG[usr_scripts_path]}/ubuntu_configs/study_daemon.service"
 SYMLINK_TARGET[study_daemon]="/etc/systemd/system/study_daemon.service"
 
 # NPM config
-SYMLINK_SOURCE[npmrc]="/usr/local/usr_scripts/ubuntu_configs/npmrc"
+SYMLINK_SOURCE[npmrc]="${USER_CONFIG[usr_scripts_path]}/ubuntu_configs/npmrc"
 SYMLINK_TARGET[npmrc]="$HOME/.npmrc"
 
+# Atuin config
+SYMLINK_SOURCE[atuin_config]="${USER_CONFIG[usr_scripts_path]}/ubuntu_configs/atuin_config.toml"
+SYMLINK_TARGET[atuin_config]="$HOME/.config/atuin/config.toml"
+
+# Fcitx5 user dic
+SYMLINK_SOURCE[fcitx5_user_dict]="${USER_CONFIG[usr_scripts_path]}/ubuntu_configs/fcitx5_user.dict"
+SYMLINK_TARGET[fcitx5_user_dict]="$HOME/.local/share/fcitx5/pinyin/user.dict"
+
+# Fcitx5 user history
+SYMLINK_SOURCE[fcitx5_user_history]="${USER_CONFIG[usr_scripts_path]}/ubuntu_configs/fcitx5_user.history"
+SYMLINK_TARGET[fcitx5_user_history]="$HOME/.local/share/fcitx5/pinyin/user.history"
+
+# Fcitx5 themes
+SYMLINK_SOURCE[fcitx5_themes]="${USER_CONFIG[usr_scripts_path]}/ubuntu_configs/fcitx5_themes"
+SYMLINK_TARGET[fcitx5_themes]="$HOME/.local/share/fcitx5/themes"
 # Function to get a global variable
 # Usage: global_vars key
 # Returns: The value of the key or empty if not found
