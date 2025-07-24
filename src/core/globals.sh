@@ -278,6 +278,13 @@ PKG_BRANCH[ncm4]="main"
 PKG_DEB_SRC[ncm4]="true"
 PKG_REPO_BASE_URL[ncm4]="https://ppa.launchpadcontent.net/gmg137/ncm/ubuntu"
 
+PKG_FORMAL_NAME[zotero]="zotero"
+PKG_GPG_KEY_URL[zotero]="https://raw.githubusercontent.com/retorquere/zotero-deb/master/zotero-archive-keyring.asc"
+PKG_ARCH[zotero]="amd64"
+PKG_VERSION_CODENAME[zotero]="./"
+PKG_BRANCH[zotero]=""
+PKG_DEB_SRC[zotero]="false"
+PKG_REPO_BASE_URL[zotero]="https://zotero.retorque.re/file/apt-package-archive"
 # Package Groups Definition
 # These are groups of packages for batch installation
 
