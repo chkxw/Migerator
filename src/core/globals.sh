@@ -159,7 +159,15 @@ PKG_ARCH[nodejs]="amd64"
 PKG_VERSION_CODENAME[nodejs]="nodistro"
 PKG_BRANCH[nodejs]="main"
 PKG_DEB_SRC[nodejs]="false"
-PKG_REPO_BASE_URL[nodejs]="https://deb.nodesource.com/node_21.x"
+PKG_REPO_BASE_URL[nodejs]="https://deb.nodesource.com/node_22.x"
+
+PKG_FORMAL_NAME[nodejs21]="nodejs"
+PKG_GPG_KEY_URL[nodejs21]="https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key"
+PKG_ARCH[nodejs21]="amd64"
+PKG_VERSION_CODENAME[nodejs21]="nodistro"
+PKG_BRANCH[nodejs21]="main"
+PKG_DEB_SRC[nodejs21]="false"
+PKG_REPO_BASE_URL[nodejs21]="https://deb.nodesource.com/node_21.x"
 
 # VirtualGL
 PKG_FORMAL_NAME[virtualgl]="virtualgl"
