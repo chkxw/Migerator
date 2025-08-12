@@ -259,6 +259,15 @@ PKG_BRANCH[ros]="main"
 PKG_DEB_SRC[ros]="false"
 PKG_REPO_BASE_URL[ros]="http://packages.ros.org/ros/ubuntu"
 
+# ros2 (Jazzy)
+PKG_FORMAL_NAME[ros2]="ros-jazzy-desktop"
+PKG_GPG_KEY_URL[ros2]="https://raw.githubusercontent.com/ros/rosdistro/master/ros.key"
+PKG_ARCH[ros2]="amd64"
+PKG_VERSION_CODENAME[ros2]="$OS_CODENAME"
+PKG_BRANCH[ros2]="main"
+PKG_DEB_SRC[ros2]="false"
+PKG_REPO_BASE_URL[ros2]="http://packages.ros.org/ros2/ubuntu"
+
 # Thunderbird
 PKG_FORMAL_NAME[thunderbird]="thunderbird"
 PKG_GPG_KEY_URL[thunderbird]="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x0AB215679C571D1C8325275B9BDB3D89CE49EC21"
