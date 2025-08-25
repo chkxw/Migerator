@@ -24,14 +24,14 @@ is_package_installed() {
     log_debug "Checking if package '$package' is installed" "$MODULE_NAME"
     
     if command -v dpkg &>/dev/null; then
-        # Use dpkg to check if package is installed
-        if dpkg -l "$package" 2>/dev/null | grep -q "^ii"; then
+        # Use dpkg to check if package is installed (LC_ALL=C for consistent output)
+        if LC_ALL=C dpkg -l "$package" 2>/dev/null | grep -q "^ii"; then
             log_debug "Package '$package' is installed" "$MODULE_NAME"
             return 0
         fi
     else
-        # Fallback to apt-cache
-        local package_status=$(apt-cache policy "$package" 2>/dev/null | grep -E '^\s+Installed:' | awk '{print $2}')
+        # Fallback to apt-cache (LC_ALL=C for consistent output)
+        local package_status=$(LC_ALL=C apt-cache policy "$package" 2>/dev/null | grep -E '^\s+Installed:' | awk '{print $2}')
         if [ -n "$package_status" ] && [ "$package_status" != "(none)" ]; then
             log_debug "Package '$package' is installed" "$MODULE_NAME"
             return 0

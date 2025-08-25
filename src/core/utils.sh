@@ -131,14 +131,15 @@ check_package_installed() {
     local PKG_FORMAL_NAME="$1"
     log_debug "Checking if package '$PKG_FORMAL_NAME' is installed" "check_package"
     
-    local package_status=$(apt-cache policy "$PKG_FORMAL_NAME" 2>/dev/null | grep -E '^\s+Installed:' | awk '{print $2}')
+    # Force English locale to ensure consistent output parsing
+    local package_status=$(LC_ALL=C apt-cache policy "$PKG_FORMAL_NAME" 2>/dev/null | grep -E '^\s+Installed:' | awk '{print $2}')
     if [ "$?" -eq 1 ]; then
         log_error "Error checking package status for $PKG_FORMAL_NAME" "check_package"
         return 1
-    elif ! apt-cache show "${PKG_FORMAL_NAME}" &>/dev/null; then
+    elif ! LC_ALL=C apt-cache show "${PKG_FORMAL_NAME}" &>/dev/null; then
         log_warning "Package $PKG_FORMAL_NAME not found in repositories" "check_package"
         return 2
-    elif [ "$package_status" == "(none)" ]; then
+    elif [ "$package_status" == "(none)" ] || [ -z "$package_status" ]; then
         log_debug "Package $PKG_FORMAL_NAME is not installed" "check_package"
         return 3
     else

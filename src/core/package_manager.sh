@@ -175,7 +175,7 @@ check_package_repo_available() {
     # Test if apt can fetch metadata from the repository
     # --print-uris shows what apt would download without actually downloading
     local apt_output
-    apt_output=$(apt-get update \
+    apt_output=$(LC_ALL=C apt-get update \
         -o Dir::Etc::sourcelist="$temp_sources" \
         -o Dir::Etc::sourceparts=/dev/null \
         -o Dir::State::lists="$temp_lists_dir" \
