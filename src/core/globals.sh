@@ -302,6 +302,15 @@ PKG_VERSION_CODENAME[zotero]="./"
 PKG_BRANCH[zotero]=""
 PKG_DEB_SRC[zotero]="false"
 PKG_REPO_BASE_URL[zotero]="https://zotero.retorque.re/file/apt-package-archive"
+
+# Prism Launcher (Minecraft launcher via Prebuilt-MPR)
+PKG_FORMAL_NAME[prismlauncher]="prismlauncher"
+PKG_GPG_KEY_URL[prismlauncher]="https://proget.makedeb.org/debian-feeds/prebuilt-mpr.pub"
+PKG_ARCH[prismlauncher]="all,amd64"
+PKG_VERSION_CODENAME[prismlauncher]='prebuilt-mpr'
+PKG_BRANCH[prismlauncher]='$OS_CODENAME'
+PKG_DEB_SRC[prismlauncher]="false"
+PKG_REPO_BASE_URL[prismlauncher]="https://proget.makedeb.org"
 # Package Groups Definition
 # These are groups of packages for batch installation
 

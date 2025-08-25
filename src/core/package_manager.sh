@@ -55,6 +55,13 @@ parse_package_repo() {
         fi
     fi
     
+    # Handle OS_CODENAME placeholder in branch field (now executes independently)
+    if [[ "$branch" == *'$OS_CODENAME'* ]]; then
+        detect_os_info
+        branch="${branch//\$OS_CODENAME/$OS_CODENAME}"
+        log_debug "Replaced \$OS_CODENAME in branch with: $branch" "package_manager"
+    fi
+    
     # Generate multiple possible repository URLs for availability check
     local repo_url=""
     local check_urls=()
@@ -307,6 +314,10 @@ register_package_repo() {
         log_error "Failed to write repository entry to $list_file" "package_manager"
         return 1
     fi
+    
+    # Log the actual content that was written to verify
+    log_debug "Repository file content written to $list_file:" "package_manager"
+    log_debug "$(cat $list_file 2>/dev/null || echo 'Could not read file')" "package_manager"
     
     log_info "Successfully registered package repository: $nickname" "package_manager"
     return 0
