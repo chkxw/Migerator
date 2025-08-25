@@ -107,11 +107,12 @@ git_repos_update_single() {
 }
 
 # Function to clone repositories from globals
-# Args: $1 - force (optional), $2 - space-separated list of repo keys to clone (optional)
+# Args: $1 - force (optional), $2 - space-separated list of repo keys to clone (optional), $3 - SSH key override (optional)
 # Returns: 0 on success, 1 on failure
 git_repos_clone_from_globals() {
     local force="${1:-false}"
     local selected_repos="$2"
+    local ssh_key_override="$3"
     local repo_list=$(global_vars git_repos)
     
     if [[ -z "$repo_list" ]]; then
@@ -152,6 +153,11 @@ git_repos_clone_from_globals() {
         local dir="${GIT_REPO_DIR[$repo_name]}"
         local branch="${GIT_REPO_BRANCH[$repo_name]:-main}"
         local ssh_key="${GIT_REPO_SSH_KEY[$repo_name]}"
+        
+        # Use SSH key override if provided
+        if [[ -n "$ssh_key_override" ]]; then
+            ssh_key="$ssh_key_override"
+        fi
         
         # Expand variables in directory path
         dir=$(eval echo "$dir")
@@ -429,7 +435,7 @@ EOF
                 fi
             else
                 # Clone from globals
-                if ! git_repos_clone_from_globals "$force" "$selected_repos"; then
+                if ! git_repos_clone_from_globals "$force" "$selected_repos" "$single_ssh_key"; then
                     result=1
                 fi
             fi
