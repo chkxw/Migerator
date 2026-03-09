@@ -42,78 +42,81 @@ declare -A USER_JOIN_YEAR
 declare -A USER_IS_SUPERUSER
 
 # Regular lab members
-USER_FULLNAME["joseph_zhong"]="Joseph Zhong"
-USER_JOIN_YEAR["joseph_zhong"]="2024"
-USER_IS_SUPERUSER["joseph_zhong"]="false"
+# USER_FULLNAME["joseph_zhong"]="Joseph Zhong"
+# USER_JOIN_YEAR["joseph_zhong"]="2024"
+# USER_IS_SUPERUSER["joseph_zhong"]="false"
 
-USER_FULLNAME["chen_li"]="Chen Li"
-USER_JOIN_YEAR["chen_li"]="2024"
-USER_IS_SUPERUSER["chen_li"]="false"
+# USER_FULLNAME["chen_li"]="Chen Li"
+# USER_JOIN_YEAR["chen_li"]="2024"
+# USER_IS_SUPERUSER["chen_li"]="false"
 
-USER_FULLNAME["erika_sy"]="Erika Sy"
-USER_JOIN_YEAR["erika_sy"]="2024"
-USER_IS_SUPERUSER["erika_sy"]="false"
+# USER_FULLNAME["erika_sy"]="Erika Sy"
+# USER_JOIN_YEAR["erika_sy"]="2024"
+# USER_IS_SUPERUSER["erika_sy"]="false"
 
-USER_FULLNAME["allen_chien"]="Allen Chien"
-USER_JOIN_YEAR["allen_chien"]="2024"
-USER_IS_SUPERUSER["allen_chien"]="false"
+# USER_FULLNAME["allen_chien"]="Allen Chien"
+# USER_JOIN_YEAR["allen_chien"]="2024"
+# USER_IS_SUPERUSER["allen_chien"]="false"
 
-USER_FULLNAME["nicholas_corrado"]="Nicholas Corrado"
-USER_JOIN_YEAR["nicholas_corrado"]="2024"
-USER_IS_SUPERUSER["nicholas_corrado"]="false"
+# USER_FULLNAME["nicholas_corrado"]="Nicholas Corrado"
+# USER_JOIN_YEAR["nicholas_corrado"]="2024"
+# USER_IS_SUPERUSER["nicholas_corrado"]="false"
 
-USER_FULLNAME["andrew_wang"]="Andrew Wang"
-USER_JOIN_YEAR["andrew_wang"]="2024"
-USER_IS_SUPERUSER["andrew_wang"]="false"
+# USER_FULLNAME["andrew_wang"]="Andrew Wang"
+# USER_JOIN_YEAR["andrew_wang"]="2024"
+# USER_IS_SUPERUSER["andrew_wang"]="false"
 
-USER_FULLNAME["subhojyoti_mukerjee"]="Subhojyoti Mukerjee"
-USER_JOIN_YEAR["subhojyoti_mukerjee"]="2024"
-USER_IS_SUPERUSER["subhojyoti_mukerjee"]="false"
+# USER_FULLNAME["subhojyoti_mukerjee"]="Subhojyoti Mukerjee"
+# USER_JOIN_YEAR["subhojyoti_mukerjee"]="2024"
+# USER_IS_SUPERUSER["subhojyoti_mukerjee"]="false"
 
-USER_FULLNAME["brahma_pavse"]="Brahma Pavse"
-USER_JOIN_YEAR["brahma_pavse"]="2024"
-USER_IS_SUPERUSER["brahma_pavse"]="false"
+# USER_FULLNAME["brahma_pavse"]="Brahma Pavse"
+# USER_JOIN_YEAR["brahma_pavse"]="2024"
+# USER_IS_SUPERUSER["brahma_pavse"]="false"
 
-USER_FULLNAME["will_cong"]="Will Cong"
-USER_JOIN_YEAR["will_cong"]="2024"
-USER_IS_SUPERUSER["will_cong"]="false"
+# USER_FULLNAME["will_cong"]="Will Cong"
+# USER_JOIN_YEAR["will_cong"]="2024"
+# USER_IS_SUPERUSER["will_cong"]="false"
 
-USER_FULLNAME["alan_zhong"]="Alan Zhong"
-USER_JOIN_YEAR["alan_zhong"]="2024"
-USER_IS_SUPERUSER["alan_zhong"]="false"
+# USER_FULLNAME["alan_zhong"]="Alan Zhong"
+# USER_JOIN_YEAR["alan_zhong"]="2024"
+# USER_IS_SUPERUSER["alan_zhong"]="false"
 
-USER_FULLNAME["brennen_hill"]="Brennen Hill"
-USER_JOIN_YEAR["brennen_hill"]="2024"
-USER_IS_SUPERUSER["brennen_hill"]="false"
+# USER_FULLNAME["brennen_hill"]="Brennen Hill"
+# USER_JOIN_YEAR["brennen_hill"]="2024"
+# USER_IS_SUPERUSER["brennen_hill"]="false"
 
-USER_FULLNAME["jeffrey_zou"]="Jeffrey Zou"
-USER_JOIN_YEAR["jeffrey_zou"]="2024"
-USER_IS_SUPERUSER["jeffrey_zou"]="false"
+# USER_FULLNAME["jeffrey_zou"]="Jeffrey Zou"
+# USER_JOIN_YEAR["jeffrey_zou"]="2024"
+# USER_IS_SUPERUSER["jeffrey_zou"]="false"
 
-USER_FULLNAME["zisen_shao"]="Zisen Shao"
-USER_JOIN_YEAR["zisen_shao"]="2024"
-USER_IS_SUPERUSER["zisen_shao"]="false"
+# USER_FULLNAME["zisen_shao"]="Zisen Shao"
+# USER_JOIN_YEAR["zisen_shao"]="2024"
+# USER_IS_SUPERUSER["zisen_shao"]="false"
 
 # Super users (with sudo access)
-USER_FULLNAME["benjamin_hong"]="Benjamin Hong"
-USER_JOIN_YEAR["benjamin_hong"]="2024"
-USER_IS_SUPERUSER["benjamin_hong"]="true"
+USER_FULLNAME["zhuwei_xu"]="Zhuwei Xu"
+USER_JOIN_YEAR["zhuwei_xu"]="2025"
+USER_IS_SUPERUSER["zhuwei_xu"]="true"
+# USER_FULLNAME["benjamin_hong"]="Benjamin Hong"
+# USER_JOIN_YEAR["benjamin_hong"]="2024"
+# USER_IS_SUPERUSER["benjamin_hong"]="true"
 
-USER_FULLNAME["abhinav_harish"]="Abhinav Harish"
-USER_JOIN_YEAR["abhinav_harish"]="2024"
-USER_IS_SUPERUSER["abhinav_harish"]="true"
+# USER_FULLNAME["abhinav_harish"]="Abhinav Harish"
+# USER_JOIN_YEAR["abhinav_harish"]="2024"
+# USER_IS_SUPERUSER["abhinav_harish"]="true"
 
-USER_FULLNAME["adam_labiosa"]="Adam Labiosa"
-USER_JOIN_YEAR["adam_labiosa"]="2024"
-USER_IS_SUPERUSER["adam_labiosa"]="true"
+# USER_FULLNAME["adam_labiosa"]="Adam Labiosa"
+# USER_JOIN_YEAR["adam_labiosa"]="2024"
+# USER_IS_SUPERUSER["adam_labiosa"]="true"
 
-USER_FULLNAME["yunfu_deng"]="Yunfu Deng"
-USER_JOIN_YEAR["yunfu_deng"]="2024"
-USER_IS_SUPERUSER["yunfu_deng"]="true"
+# USER_FULLNAME["yunfu_deng"]="Yunfu Deng"
+# USER_JOIN_YEAR["yunfu_deng"]="2024"
+# USER_IS_SUPERUSER["yunfu_deng"]="true"
 
-USER_FULLNAME["yuhao_li"]="Yuhao Li"
-USER_JOIN_YEAR["yuhao_li"]="2024"
-USER_IS_SUPERUSER["yuhao_li"]="true"
+# USER_FULLNAME["yuhao_li"]="Yuhao Li"
+# USER_JOIN_YEAR["yuhao_li"]="2024"
+# USER_IS_SUPERUSER["yuhao_li"]="true"
 
 # Package repository information
 # Structure: nickname pkg_formal_name gpg_key_url pkg_arch pkg_version_codename pkg_branch pkg_deb_src repo_base_url
@@ -270,7 +273,7 @@ PKG_REPO_BASE_URL[ros2]="http://packages.ros.org/ros2/ubuntu"
 
 # Thunderbird
 PKG_FORMAL_NAME[thunderbird]="thunderbird"
-PKG_GPG_KEY_URL[thunderbird]="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x0AB215679C571D1C8325275B9BDB3D89CE49EC21"
+PKG_GPG_KEY_URL[thunderbird]="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xAEBDF4819BE21867"
 PKG_ARCH[thunderbird]="amd64"
 PKG_VERSION_CODENAME[thunderbird]="$OS_CODENAME"
 PKG_BRANCH[thunderbird]="main"
@@ -303,14 +306,23 @@ PKG_BRANCH[zotero]=""
 PKG_DEB_SRC[zotero]="false"
 PKG_REPO_BASE_URL[zotero]="https://zotero.retorque.re/file/apt-package-archive"
 
+# GitHub CLI
+PKG_FORMAL_NAME[gh]="gh"
+PKG_GPG_KEY_URL[gh]="https://cli.github.com/packages/githubcli-archive-keyring.gpg"
+PKG_ARCH[gh]="amd64"
+PKG_VERSION_CODENAME[gh]="stable"
+PKG_BRANCH[gh]="main"
+PKG_DEB_SRC[gh]="false"
+PKG_REPO_BASE_URL[gh]="https://cli.github.com/packages"
+
 # Prism Launcher (Minecraft launcher via Prebuilt-MPR)
 PKG_FORMAL_NAME[prismlauncher]="prismlauncher"
-PKG_GPG_KEY_URL[prismlauncher]="https://proget.makedeb.org/debian-feeds/prebuilt-mpr.pub"
-PKG_ARCH[prismlauncher]="all,amd64"
-PKG_VERSION_CODENAME[prismlauncher]='prebuilt-mpr'
-PKG_BRANCH[prismlauncher]='$OS_CODENAME'
+PKG_GPG_KEY_URL[prismlauncher]="https://prism-launcher-for-debian.github.io/repo/prismlauncher.gpg"
+PKG_ARCH[prismlauncher]="amd64"
+PKG_VERSION_CODENAME[prismlauncher]="$OS_CODENAME"
+PKG_BRANCH[prismlauncher]="main"
 PKG_DEB_SRC[prismlauncher]="false"
-PKG_REPO_BASE_URL[prismlauncher]="https://proget.makedeb.org"
+PKG_REPO_BASE_URL[prismlauncher]="https://prism-launcher-for-debian.github.io/repo"
 # Package Groups Definition
 # These are groups of packages for batch installation
 

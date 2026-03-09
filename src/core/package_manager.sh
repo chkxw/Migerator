@@ -335,23 +335,23 @@ install_package() {
     
     log_debug "Installing package: $nickname ($package_name)" "package_manager"
     
-    # Check if the package is already installed
-    if check_package_installed "$package_name"; then
-        log_info "Package already installed: $nickname ($package_name)" "package_manager"
-        return 0
-    fi
-    
-    # Register the package repository if needed
-    if ! grep -q "^deb.*$nickname" /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null; then
-        log_debug "Repository not registered for $nickname, registering now" "package_manager"
+    # Check if the repo entry needs updating (even if package is installed)
+    if ! check_repo_entry_current "$nickname"; then
+        log_debug "Repository needs registration/update for $nickname" "package_manager"
         if ! register_package_repo "$nickname"; then
             log_error "Failed to register repository for $nickname" "package_manager"
             return 1
         fi
-        
-        # Update package lists after adding a new repository
+
+        # Update package lists after adding/updating a repository
         log_debug "Updating package lists" "package_manager"
         Sudo apt update >/dev/null
+    fi
+
+    # Check if the package is already installed
+    if check_package_installed "$package_name"; then
+        log_info "Package already installed: $nickname ($package_name)" "package_manager"
+        return 0
     fi
     
     # Check if multi-arch support is needed based on architecture string
@@ -377,7 +377,65 @@ install_package() {
     return 0
 }
 
+# Function to check if a repo entry is up-to-date
+# Usage: check_repo_entry_current nickname
+# Returns: 0 if current, 1 if needs update
+check_repo_entry_current() {
+    local nickname="$1"
+    local list_file="/etc/apt/sources.list.d/${nickname}.list"
+    local gpg_key_file="/etc/apt/keyrings/${nickname}.gpg"
+
+    # If the list file doesn't exist, needs update
+    if [ ! -f "$list_file" ]; then
+        log_debug "Repo list file not found for $nickname, needs registration" "package_manager"
+        return 1
+    fi
+
+    # Generate expected entry
+    local expected_entry="$(generate_repo_entry_template "$nickname" "$gpg_key_file")"
+
+    # Read current first deb line
+    local current_entry="$(grep '^deb ' "$list_file" | head -1)"
+
+    if [ "$expected_entry" != "$current_entry" ]; then
+        log_info "Repo entry changed for $nickname, updating" "package_manager"
+        log_debug "Current:  $current_entry" "package_manager"
+        log_debug "Expected: $expected_entry" "package_manager"
+        return 1
+    fi
+
+    # Check if GPG key has changed
+    if [ -f "$gpg_key_file" ]; then
+        local gpg_key_url="${PKG_GPG_KEY_URL[$nickname]}"
+        local temp_key="/tmp/${nickname}-key-check-$$"
+
+        if curl -fsSL "$gpg_key_url" -o "$temp_key.raw" 2>/dev/null; then
+            # Dearmor if it's ASCII-armored, otherwise use as-is
+            if grep -q "BEGIN PGP" "$temp_key.raw" 2>/dev/null; then
+                gpg --dearmor --batch --no-tty < "$temp_key.raw" > "$temp_key.gpg" 2>/dev/null
+            else
+                cp "$temp_key.raw" "$temp_key.gpg"
+            fi
+
+            if ! cmp -s "$temp_key.gpg" "$gpg_key_file"; then
+                log_info "GPG key changed for $nickname, updating" "package_manager"
+                rm -f "$temp_key.raw" "$temp_key.gpg"
+                return 1
+            fi
+            rm -f "$temp_key.raw" "$temp_key.gpg"
+        else
+            log_warning "Could not download GPG key to compare for $nickname" "package_manager"
+        fi
+    else
+        log_debug "GPG key file not found for $nickname, needs registration" "package_manager"
+        return 1
+    fi
+
+    return 0
+}
+
 # Export functions for use in other scripts
+export -f check_repo_entry_current
 export -f parse_package_repo
 export -f check_package_repo_available
 export -f generate_repo_entry_template
