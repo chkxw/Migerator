@@ -200,6 +200,20 @@ handle_nodejs_processing() {
     
     case "$operation" in
         install)
+            # Configure npm global directory to avoid permission issues
+            log_info "Configuring npm global prefix" "$MODULE_NAME"
+            local npm_global_dir="$HOME/.npm-global"
+            if [ -n "$SUDO_USER" ]; then
+                local user_home=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+                npm_global_dir="$user_home/.npm-global"
+                sudo -u "$SUDO_USER" mkdir -p "$npm_global_dir"
+                sudo -u "$SUDO_USER" npm config set prefix "$npm_global_dir"
+            else
+                mkdir -p "$npm_global_dir"
+                npm config set prefix "$npm_global_dir"
+            fi
+            log_info "npm global prefix set to $npm_global_dir" "$MODULE_NAME"
+
             # Check if we should install global npm packages
             if [ "${SCRIPT_CONFIG[nodejs_install_globals]}" = "true" ]; then
                 log_info "Installing global npm packages" "$MODULE_NAME"
