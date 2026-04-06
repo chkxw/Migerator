@@ -38,19 +38,68 @@ log_info "Starting Atuin module tests" "test_atuin"
 
 # Create test directories
 TEST_DIR="/tmp/atuin_test_$(date +%s)"
-mkdir -p "$TEST_DIR"
+TEST_HOME="$TEST_DIR/home"
+TEST_BIN="$TEST_DIR/bin"
+ORIGINAL_HOME="$HOME"
+ORIGINAL_PATH="$PATH"
 
-# Backup original shell configs if they exist
-BACKUP_BASHRC=""
-BACKUP_ZSHRC=""
-if [ -f "$HOME/.bashrc" ]; then
-    BACKUP_BASHRC="$TEST_DIR/bashrc.backup"
-    cp "$HOME/.bashrc" "$BACKUP_BASHRC"
+cleanup() {
+    HOME="$ORIGINAL_HOME"
+    PATH="$ORIGINAL_PATH"
+    export HOME PATH
+    rm -rf "$TEST_DIR"
+}
+
+trap cleanup EXIT
+
+mkdir -p "$TEST_HOME" "$TEST_BIN" "$TEST_HOME/.config" "$TEST_HOME/.local/share/atuin"
+HOME="$TEST_HOME"
+PATH="$TEST_BIN:$PATH"
+export HOME PATH
+
+touch "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"
+set_global_var "confirm_all" "true"
+
+# Mock the Atuin installer so the install tests are deterministic and offline
+cat > "$TEST_BIN/curl" <<'EOF'
+#!/bin/bash
+cat <<'SCRIPT'
+#!/bin/sh
+mkdir -p "$HOME/.atuin/bin"
+cat > "$HOME/.atuin/bin/atuin" <<'BIN'
+#!/bin/sh
+if [ "$1" = "--version" ]; then
+    echo "atuin 18.13.6"
+    exit 0
 fi
-if [ -f "$HOME/.zshrc" ]; then
-    BACKUP_ZSHRC="$TEST_DIR/zshrc.backup"
-    cp "$HOME/.zshrc" "$BACKUP_ZSHRC"
+echo "fake atuin $@"
+BIN
+chmod +x "$HOME/.atuin/bin/atuin"
+cat > "$HOME/.atuin/bin/env" <<'ENV'
+#!/bin/sh
+case ":${PATH}:" in
+    *:"$HOME/.atuin/bin":*)
+        ;;
+    *)
+        export PATH="$HOME/.atuin/bin:$PATH"
+        ;;
+esac
+ENV
+chmod +x "$HOME/.atuin/bin/env"
+SCRIPT
+EOF
+chmod +x "$TEST_BIN/curl"
+
+# Simulate a pre-existing unmanaged/system installation on PATH
+cat > "$TEST_BIN/atuin" <<'EOF'
+#!/bin/sh
+if [ "$1" = "--version" ]; then
+    echo "atuin 18.12.0"
+    exit 0
 fi
+echo "system atuin $@"
+EOF
+chmod +x "$TEST_BIN/atuin"
 
 # Test 1: Test content generation functions
 log_info "Test 1: Testing content generation functions" "test_atuin"
@@ -73,7 +122,7 @@ fi
 
 # Test config content generation
 config_content=$(atuin_generate_config_content "true")
-if [[ "$config_content" =~ "sync_enabled = true" ]]; then
+if grep -qF "[sync]" <<< "$config_content" && grep -qF "records = true" <<< "$config_content"; then
     report_result 0 "Config content generation works"
 else
     report_result 1 "Config content generation failed"
@@ -87,6 +136,75 @@ if ! atuin_is_installed; then
     report_result 0 "Correctly detected Atuin is not installed"
 else
     report_result 1 "Incorrectly detected Atuin as installed"
+fi
+
+# Test version helpers
+if atuin_version_at_least "18.13.6" "$ATUIN_MIN_VERSION" && ! atuin_version_at_least "18.12.9" "$ATUIN_MIN_VERSION"; then
+    report_result 0 "Version comparison works"
+else
+    report_result 1 "Version comparison failed"
+fi
+
+# Test auth session detection
+if ! atuin_is_logged_in; then
+    report_result 0 "Correctly detected Atuin is not logged in"
+else
+    report_result 1 "Incorrectly detected Atuin as logged in"
+fi
+
+mkdir -p "$HOME/.local/share/atuin"
+echo "legacy-session-token" > "$HOME/.local/share/atuin/session"
+if atuin_is_logged_in; then
+    report_result 0 "Legacy session detection works"
+else
+    report_result 1 "Legacy session detection failed"
+fi
+rm -f "$HOME/.local/share/atuin/session"
+
+if command -v python3 >/dev/null 2>&1; then
+    python3 - <<'PY'
+from pathlib import Path
+import sqlite3
+
+meta = Path.home() / ".local" / "share" / "atuin" / "meta.db"
+meta.parent.mkdir(parents=True, exist_ok=True)
+con = sqlite3.connect(meta)
+con.execute("create table if not exists meta (key text primary key, value text not null)")
+con.execute("insert or replace into meta(key, value) values (?, ?)", ("hub_session", "atapi_test_token"))
+con.commit()
+con.close()
+PY
+
+    if atuin_is_logged_in; then
+        report_result 0 "Hub session detection works"
+    else
+        report_result 1 "Hub session detection failed"
+    fi
+else
+    log_warning "python3 not available, skipping Hub session detection test" "test_atuin"
+fi
+
+# Test managed install behavior
+if atuin_install && atuin_is_installed && [ "$(atuin_get_version)" = "18.13.6" ]; then
+    report_result 0 "Managed install succeeds even when another atuin is on PATH"
+else
+    report_result 1 "Managed install failed when another atuin was on PATH"
+fi
+
+cat > "$HOME/.atuin/bin/atuin" <<'EOF'
+#!/bin/sh
+if [ "$1" = "--version" ]; then
+    echo "atuin 18.12.0"
+    exit 0
+fi
+echo "old managed atuin $@"
+EOF
+chmod +x "$HOME/.atuin/bin/atuin"
+
+if atuin_install && [ "$(atuin_get_version)" = "18.13.6" ]; then
+    report_result 0 "Managed install upgrades unsupported versions"
+else
+    report_result 1 "Managed install did not upgrade unsupported versions"
 fi
 
 # Test 3: Test help functionality
@@ -159,7 +277,7 @@ log_info "Test 6: Testing configuration file generation" "test_atuin"
 
 # Test config with sync enabled
 config_with_sync=$(atuin_generate_config_content "true")
-if [[ "$config_with_sync" =~ "sync_enabled = true" ]] && [[ "$config_with_sync" =~ "auto_sync = true" ]]; then
+if grep -qF "[sync]" <<< "$config_with_sync" && grep -qF "records = true" <<< "$config_with_sync" && grep -qF "auto_sync = true" <<< "$config_with_sync"; then
     report_result 0 "Config generation with sync enabled works"
 else
     report_result 1 "Config generation with sync enabled failed"
@@ -167,10 +285,17 @@ fi
 
 # Test config with sync disabled
 config_without_sync=$(atuin_generate_config_content "false")
-if [[ "$config_without_sync" =~ "sync_enabled = false" ]]; then
+if grep -qF "[sync]" <<< "$config_without_sync" && grep -qF "records = false" <<< "$config_without_sync"; then
     report_result 0 "Config generation with sync disabled works"
 else
     report_result 1 "Config generation with sync disabled failed"
+fi
+
+# Test sync helper
+if atuin_sync_v2_enabled "true" && ! atuin_sync_v2_enabled "false"; then
+    report_result 0 "Sync v2 enablement helper works"
+else
+    report_result 1 "Sync v2 enablement helper failed"
 fi
 
 # Test 7: Test module integration
@@ -195,17 +320,6 @@ fi
 
 # Cleanup
 log_info "Cleaning up test artifacts" "test_atuin"
-
-# Restore original shell configs if they existed
-if [ -n "$BACKUP_BASHRC" ] && [ -f "$BACKUP_BASHRC" ]; then
-    cp "$BACKUP_BASHRC" "$HOME/.bashrc"
-fi
-if [ -n "$BACKUP_ZSHRC" ] && [ -f "$BACKUP_ZSHRC" ]; then
-    cp "$BACKUP_ZSHRC" "$HOME/.zshrc"
-fi
-
-# Remove test directory
-rm -rf "$TEST_DIR"
 
 # Print test summary
 log_info "===== Atuin Module Test Summary =====" "test_atuin"

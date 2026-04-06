@@ -15,6 +15,8 @@ source "$PROJECT_ROOT/src/core/file_ops.sh"
 # Log with hard-coded module name for initial loading
 log_debug "Loading atuin module" "atuin"
 
+ATUIN_MIN_VERSION="18.13.0"
+
 # Function to generate Atuin bash integration content
 # Returns: configuration content as a string
 atuin_generate_bash_init_content() {
@@ -38,21 +40,25 @@ atuin_generate_profile_init_content(){
     echo "$content"
 }
 
+# Function to resolve whether Atuin sync should use record store sync
+# Returns: 0 for enabled, 1 for disabled
+atuin_sync_v2_enabled() {
+    local sync_enabled="${1:-true}"
+    [[ "$sync_enabled" == "true" ]]
+}
+
 # Function to generate Atuin config content with sync settings
 # Args: $1 - sync enabled (true/false)
 # Returns: configuration content as a string
 atuin_generate_config_content() {
     local sync_enabled="$1"
-    
+
     local content="## Atuin configuration
 ## See https://docs.atuin.sh/configuration/config/ for more details
 
 # How often to sync history with the server
 auto_sync = true
 sync_frequency = \"10s\"
-
-# Enable/disable sync
-sync_enabled = $sync_enabled
 
 # Which search mode to use
 search_mode = \"fuzzy\"
@@ -66,8 +72,12 @@ show_preview = true
 # Filter duplicates in search results
 filter_mode = \"global\"
 
-# Exit search on execution
-exit_on_exec = true"
+# Accept command immediately when pressing enter in the TUI
+enter_accept = true
+
+[sync]
+# Enable record-store sync (sync v2)
+records = $sync_enabled"
 
     echo "$content"
 }
@@ -82,6 +92,33 @@ atuin_is_installed() {
     fi
 }
 
+# Function to normalize a version string for comparisons
+# Args: $1 - raw version string
+# Returns: normalized version on stdout
+atuin_normalize_version() {
+    local version="$1"
+    version="${version%% *}"
+    version="${version#v}"
+    printf "%s\n" "$version" | sed 's/[^0-9.].*$//'
+}
+
+# Function to compare two semantic versions
+# Args: $1 - candidate version, $2 - minimum version
+# Returns: 0 if candidate >= minimum, 1 otherwise
+atuin_version_at_least() {
+    local candidate
+    local minimum
+
+    candidate="$(atuin_normalize_version "$1")"
+    minimum="$(atuin_normalize_version "$2")"
+
+    if [ -z "$candidate" ] || [ -z "$minimum" ]; then
+        return 1
+    fi
+
+    [ "$(printf "%s\n%s\n" "$minimum" "$candidate" | sort -V | head -n1)" = "$minimum" ]
+}
+
 # Function to install Atuin
 # Returns: 0 on success, 1 on failure
 atuin_install() {
@@ -89,20 +126,29 @@ atuin_install() {
     
     # Check if Atuin is already installed
     if atuin_is_installed; then
-        log_info "Atuin is already installed" "$MODULE_NAME"
-        return 0
+        local installed_version
+        installed_version="$(atuin_get_version)"
+
+        if atuin_version_at_least "$installed_version" "$ATUIN_MIN_VERSION"; then
+            log_info "Atuin is already installed at $HOME/.atuin/bin/atuin (version ${installed_version})" "$MODULE_NAME"
+            return 0
+        fi
+
+        log_warning "Managed Atuin version ${installed_version:-unknown} is older than required minimum ${ATUIN_MIN_VERSION}; upgrading" "$MODULE_NAME"
     fi
     
     # Check if atuin is installed elsewhere
     if command -v atuin &>/dev/null; then
         local existing_atuin=$(which atuin)
-        log_warning "Atuin is already installed in a different location: $existing_atuin" "$MODULE_NAME"
-        return 0
+        if [ "$existing_atuin" != "$HOME/.atuin/bin/atuin" ]; then
+            log_info "Atuin is installed elsewhere at $existing_atuin; installing managed copy in $HOME/.atuin/bin" "$MODULE_NAME"
+        fi
     fi
     
-    # Download and run the installer
+    # Download and run the binary installer. The higher-level setup script
+    # also edits shell rc files and prompts for setup, which the module already manages.
     log_info "Downloading and installing Atuin" "$MODULE_NAME"
-    local installer_url="https://setup.atuin.sh"
+    local installer_url="https://github.com/atuinsh/atuin/releases/latest/download/atuin-installer.sh"
     
     # Check if curl is available
     if ! command -v curl &>/dev/null; then
@@ -111,13 +157,78 @@ atuin_install() {
     fi
     
     # Run installer (it installs to ~/.atuin by default)
-    if curl --proto '=https' --tlsv1.2 -LsSf "$installer_url" | sh; then
-        log_info "Atuin installed successfully" "$MODULE_NAME"
-        return 0
-    else
+    if ! curl --proto '=https' --tlsv1.2 -LsSf "$installer_url" | sh; then
         log_error "Failed to install Atuin" "$MODULE_NAME"
         return 1
     fi
+
+    if ! atuin_is_installed; then
+        log_error "Atuin installer completed but $HOME/.atuin/bin/atuin is missing" "$MODULE_NAME"
+        return 1
+    fi
+
+    local installed_version
+    installed_version="$(atuin_get_version)"
+    if ! atuin_version_at_least "$installed_version" "$ATUIN_MIN_VERSION"; then
+        log_error "Installed Atuin version ${installed_version:-unknown} is older than required minimum ${ATUIN_MIN_VERSION}" "$MODULE_NAME"
+        return 1
+    fi
+
+    log_info "Atuin installed successfully (version ${installed_version})" "$MODULE_NAME"
+    return 0
+}
+
+# Function to determine whether Atuin already has an auth session
+# Returns: 0 if a legacy or Hub session exists, 1 otherwise
+atuin_is_logged_in() {
+    local legacy_session="$HOME/.local/share/atuin/session"
+    local meta_db="$HOME/.local/share/atuin/meta.db"
+
+    if [ -s "$legacy_session" ]; then
+        return 0
+    fi
+
+    if [ -f "$meta_db" ] && command -v python3 &>/dev/null; then
+        local has_meta_session
+        has_meta_session=$(python3 - <<'PY'
+from pathlib import Path
+import sqlite3
+
+meta = Path.home() / ".local" / "share" / "atuin" / "meta.db"
+if not meta.exists():
+    raise SystemExit(1)
+
+con = sqlite3.connect(meta)
+tables = {row[0] for row in con.execute("select name from sqlite_master where type='table'")}
+if "meta" not in tables:
+    raise SystemExit(1)
+
+for key in ("session", "hub_session"):
+    row = con.execute("select value from meta where key = ?", (key,)).fetchone()
+    if row and row[0].strip():
+        print("yes")
+        raise SystemExit(0)
+
+raise SystemExit(1)
+PY
+)
+
+        if [ "$has_meta_session" = "yes" ]; then
+            return 0
+        fi
+    fi
+
+    return 1
+}
+
+# Function to detect the installed Atuin version
+# Returns: version string on stdout, empty on failure
+atuin_get_version() {
+    if ! atuin_is_installed; then
+        return 1
+    fi
+
+    "$HOME/.atuin/bin/atuin" --version 2>/dev/null | awk 'NR==1 {print $2}'
 }
 
 # Function to configure shell integration
@@ -229,25 +340,26 @@ atuin_login() {
         log_error "Atuin is not installed" "$MODULE_NAME"
         return 1
     fi
-    
-    # Check if already logged in (source environment first)
-    local sync_output
-    sync_output=$(source "$HOME/.atuin/bin/env" 2>/dev/null && "$HOME/.atuin/bin/atuin" sync 2>&1)
-    if echo "$sync_output" | grep -q -E "(You are not logged in|not logged in)"; then
-        log_debug "Not currently logged in to Atuin" "$MODULE_NAME"
-    else
+
+    if atuin_is_logged_in; then
         log_info "Already logged in to Atuin" "$MODULE_NAME"
         return 0
     fi
-    
+
+    local atuin_version
+    atuin_version="$(atuin_get_version)"
+    if [ -z "$atuin_version" ]; then
+        log_warning "Could not detect Atuin version; continuing with login" "$MODULE_NAME"
+    else
+        log_info "Detected Atuin version $atuin_version" "$MODULE_NAME"
+    fi
+
     # Login with provided credentials
     log_debug "Attempting login for username: $username (password length: ${#password})" "$MODULE_NAME"
     if [ -n "$key" ]; then
-        # Login with encryption key
         log_debug "Using encryption key (length: ${#key})" "$MODULE_NAME"
         "$HOME/.atuin/bin/atuin" login --username "$username" --password "$password" --key "$key"
     else
-        # Login without encryption key (will generate one)
         log_debug "No encryption key provided" "$MODULE_NAME"
         "$HOME/.atuin/bin/atuin" login --username "$username" --password "$password"
     fi
@@ -319,7 +431,7 @@ atuin_import_history() {
         log_info "Successfully imported shell history" "$MODULE_NAME"
         
         # Sync if logged in
-        if ! "$HOME/.atuin/bin/atuin" sync 2>&1 | grep -q "You are not logged in"; then
+        if atuin_is_logged_in; then
             log_info "Syncing imported history..." "$MODULE_NAME"
             "$HOME/.atuin/bin/atuin" sync
         fi
@@ -345,7 +457,12 @@ atuin_sync_history() {
     # Source environment and run sync
     log_info "Syncing Atuin history with server..." "$MODULE_NAME"
     local sync_output
-    sync_output=$(source "$HOME/.atuin/bin/env" 2>/dev/null && "$HOME/.atuin/bin/atuin" sync 2>&1)
+    sync_output=$(
+        if [ -f "$HOME/.atuin/bin/env" ]; then
+            source "$HOME/.atuin/bin/env" 2>/dev/null
+        fi
+        "$HOME/.atuin/bin/atuin" sync 2>&1
+    )
     
     if [ $? -eq 0 ]; then
         log_info "Atuin sync completed successfully" "$MODULE_NAME"
