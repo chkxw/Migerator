@@ -291,12 +291,7 @@ parse_args() {
         command="${args[$cmd_start]}"
         local cmd_args=()
         
-        # Add global options to each command
-        for ((k=0; k<global_opts_count; k++)); do
-            cmd_args+=("${args[$k]}")
-        done
-        
-        # Add the command
+        # Add the command (global options are already applied, don't forward them)
         cmd_args+=("$command")
         
         # Add command arguments

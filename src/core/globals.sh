@@ -262,8 +262,14 @@ PKG_BRANCH[ros]="main"
 PKG_DEB_SRC[ros]="false"
 PKG_REPO_BASE_URL[ros]="http://packages.ros.org/ros/ubuntu"
 
-# ros2 (Jazzy)
-PKG_FORMAL_NAME[ros2]="ros-jazzy-desktop"
+# ros2 (auto-detect distro based on Ubuntu version)
+if [[ "$OS_CODENAME" == "noble" ]]; then
+    PKG_FORMAL_NAME[ros2]="ros-jazzy-desktop"
+elif [[ "$OS_CODENAME" == "jammy" ]]; then
+    PKG_FORMAL_NAME[ros2]="ros-humble-desktop"
+else
+    PKG_FORMAL_NAME[ros2]="ros-jazzy-desktop"  # default to latest
+fi
 PKG_GPG_KEY_URL[ros2]="https://raw.githubusercontent.com/ros/rosdistro/master/ros.key"
 PKG_ARCH[ros2]="amd64"
 PKG_VERSION_CODENAME[ros2]="$OS_CODENAME"
