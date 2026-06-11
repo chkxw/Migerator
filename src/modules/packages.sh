@@ -479,6 +479,12 @@ handle_tailscale_processing() {
 
     case "$operation" in
         install)
+            # Handler runs both pre- and post-install; only act once the package is present
+            if ! command -v tailscale &>/dev/null; then
+                log_debug "Tailscale not installed yet, skipping service setup" "$MODULE_NAME"
+                return 0
+            fi
+
             # Enable and start tailscaled service
             log_debug "Enabling and starting tailscaled service" "$MODULE_NAME"
             Sudo systemctl enable tailscaled
