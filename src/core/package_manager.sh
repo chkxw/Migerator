@@ -61,6 +61,13 @@ parse_package_repo() {
         branch="${branch//\$OS_CODENAME/$OS_CODENAME}"
         log_debug "Replaced \$OS_CODENAME in branch with: $branch" "package_manager"
     fi
+
+    # Handle OS_CODENAME placeholder in GPG key URL
+    if [[ "$gpg_key_url" == *'$OS_CODENAME'* ]]; then
+        detect_os_info
+        gpg_key_url="${gpg_key_url//\$OS_CODENAME/$OS_CODENAME}"
+        log_debug "Replaced \$OS_CODENAME in gpg_key_url with: $gpg_key_url" "package_manager"
+    fi
     
     # Generate multiple possible repository URLs for availability check
     local repo_url=""

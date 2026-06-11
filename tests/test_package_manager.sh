@@ -81,6 +81,7 @@ test_repos=(
     "virtualgl"        # Packagecloud repo with "any" version
     "turbovnc"         # Another packagecloud repo
     "slack"
+    "tailscale"        # Repo with $OS_CODENAME in GPG key URL
 )
 
 log_info "Testing repository availability with new apt-based method..." "test_package"

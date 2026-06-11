@@ -321,6 +321,15 @@ PKG_BRANCH[gh]="main"
 PKG_DEB_SRC[gh]="false"
 PKG_REPO_BASE_URL[gh]="https://cli.github.com/packages"
 
+# Tailscale
+PKG_FORMAL_NAME[tailscale]="tailscale"
+PKG_GPG_KEY_URL[tailscale]='https://pkgs.tailscale.com/stable/ubuntu/$OS_CODENAME.asc'
+PKG_ARCH[tailscale]="amd64"
+PKG_VERSION_CODENAME[tailscale]="$OS_CODENAME"
+PKG_BRANCH[tailscale]="main"
+PKG_DEB_SRC[tailscale]="false"
+PKG_REPO_BASE_URL[tailscale]="https://pkgs.tailscale.com/stable/ubuntu"
+
 # Prism Launcher (Minecraft launcher via Prebuilt-MPR)
 PKG_FORMAL_NAME[prismlauncher]="prismlauncher"
 PKG_GPG_KEY_URL[prismlauncher]="https://prism-launcher-for-debian.github.io/repo/prismlauncher.gpg"

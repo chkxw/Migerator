@@ -470,6 +470,37 @@ Pin-Priority: -1"
     esac
 }
 
+# Function to handle Tailscale special pre/post processing
+# Usage: handle_tailscale_processing operation [install|remove]
+# Returns: 0 on success, 1 on failure
+handle_tailscale_processing() {
+    local operation="$1"
+    log_debug "Handling Tailscale $operation pre/post processing" "$MODULE_NAME"
+
+    case "$operation" in
+        install)
+            # Enable and start tailscaled service
+            log_debug "Enabling and starting tailscaled service" "$MODULE_NAME"
+            Sudo systemctl enable tailscaled
+            Sudo systemctl start tailscaled
+
+            log_info "Tailscale installed. Run 'sudo tailscale up' to authenticate and connect" "$MODULE_NAME"
+            return 0
+            ;;
+        remove)
+            # Stop and disable tailscaled service before removal
+            log_debug "Stopping and disabling tailscaled service" "$MODULE_NAME"
+            Sudo systemctl stop tailscaled
+            Sudo systemctl disable tailscaled
+            return 0
+            ;;
+        *)
+            log_error "Unknown operation: $operation" "$MODULE_NAME"
+            return 1
+            ;;
+    esac
+}
+
 # Function to handle package-specific pre/post processing
 # Usage: handle_package_processing nickname operation
 # Returns: 0 on success, 1 on failure
@@ -510,6 +541,10 @@ handle_package_processing() {
             ;;
         thunderbird)
             handle_thunderbird_processing "$operation"
+            return $?
+            ;;
+        tailscale)
+            handle_tailscale_processing "$operation"
             return $?
             ;;
         *)
