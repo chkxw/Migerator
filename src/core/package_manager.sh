@@ -419,7 +419,7 @@ check_repo_entry_current() {
         local gpg_key_url="${PKG_GPG_KEY_URL[$nickname]}"
         local temp_key="/tmp/${nickname}-key-check-$$"
 
-        if curl -fsSL "$gpg_key_url" -o "$temp_key.raw" 2>/dev/null; then
+        if curl -fsSL --connect-timeout 10 --max-time 60 "$gpg_key_url" -o "$temp_key.raw" 2>/dev/null; then
             # Dearmor if it's ASCII-armored, otherwise use as-is
             if grep -q "BEGIN PGP" "$temp_key.raw" 2>/dev/null; then
                 gpg --dearmor --batch --no-tty < "$temp_key.raw" > "$temp_key.gpg" 2>/dev/null
