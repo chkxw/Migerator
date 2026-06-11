@@ -115,7 +115,7 @@ parse_package_repo() {
     
     # Find first URL that's accessible
     for url in "${check_urls[@]}"; do
-        if curl --output /dev/null --silent --head --fail "$url"; then
+        if curl --output /dev/null --silent --head --fail --connect-timeout 10 --max-time 30 "$url"; then
             repo_url="$url"
             log_debug "Found accessible repository URL: $repo_url" "package_manager"
             break
@@ -188,6 +188,9 @@ check_package_repo_available() {
         -o Dir::State::lists="$temp_lists_dir" \
         -o APT::Get::List-Cleanup=0 \
         -o Acquire::Check-Valid-Until=false \
+        -o Acquire::http::Timeout=15 \
+        -o Acquire::https::Timeout=15 \
+        -o Acquire::Retries=1 \
         -o Debug::NoLocking=1 \
         --print-uris 2>&1)
     
@@ -273,7 +276,7 @@ register_package_repo() {
         log_debug "Extracted key ID: $key_id" "package_manager"
         # Create a temporary file to download and process the key
         local temp_key="/tmp/${nickname}-key.gpg"
-        if curl -fsSL "$gpg_key_url" > "$temp_key.asc" 2>/dev/null; then
+        if curl -fsSL --connect-timeout 10 --max-time 60 "$gpg_key_url" > "$temp_key.asc" 2>/dev/null; then
             if gpg --homedir /tmp --dearmor --batch --no-tty < "$temp_key.asc" > "$temp_key" 2>/dev/null; then
                 Sudo cp "$temp_key" "$gpg_key_file"
                 rm -f "$temp_key" "$temp_key.asc"
@@ -288,7 +291,7 @@ register_package_repo() {
         fi
     else
         # Regular key URLs
-        Sudo bash -c "curl -fsSL $gpg_key_url | gpg --yes --dearmor --batch --no-tty -o $gpg_key_file"
+        Sudo bash -c "curl -fsSL --connect-timeout 10 --max-time 60 $gpg_key_url | gpg --yes --dearmor --batch --no-tty -o $gpg_key_file"
     fi
     
     if [ $? -ne 0 ]; then
